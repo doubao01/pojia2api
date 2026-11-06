@@ -56,6 +56,41 @@ class ConfigTransfer(private val context: Context) {
         }.getOrElse { "无法打开文件选择器：${it.message ?: "未知错误"}" }
     }
 
+    /**
+     * 只导出账号，对应供应商页的「导出账号」。
+     */
+    fun exportAccounts(accounts: List<Account>): String {
+        val payload = ConfigBundle(
+            version = EXPORT_VERSION,
+            settings = null,
+            accounts = accounts,
+        )
+        return runCatching {
+            pendingJson = JSON.encodeToString(ConfigBundle.serializer(), payload)
+            val launch = ConfigTransferBridge.exportRequest
+                ?: return "保存界面未就绪，请重试"
+            launch()
+            "已打开保存界面，选好位置即可"
+        }.getOrElse { "无法打开保存界面：${it.message ?: "未知错误"}" }
+    }
+
+    /**
+     * 只导入账号，对应供应商页的「导入账号」。
+     *
+     * @param onLoaded 解析成功后的回调，只带 accounts 部分
+     */
+    fun importAccounts(onLoaded: (List<Account>) -> Unit): String {
+        return runCatching {
+            pendingImport = { bundle ->
+                bundle.accounts?.let(onLoaded)
+            }
+            val launch = ConfigTransferBridge.importRequest
+                ?: return "文件选择器未就绪，请重试"
+            launch()
+            "已打开文件选择器"
+        }.getOrElse { "无法打开文件选择器：${it.message ?: "未知错误"}" }
+    }
+
     companion object {
         const val EXPORT_VERSION = 1
 

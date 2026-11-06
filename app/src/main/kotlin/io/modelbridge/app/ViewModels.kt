@@ -13,6 +13,7 @@ import io.modelbridge.spi.Provider
 import io.modelbridge.spi.ProviderContext
 import io.modelbridge.spi.ValidationResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -228,6 +229,68 @@ class ViewModels(
 
     fun clearMessage() {
         _message.value = null
+    }
+
+    /** 显示一条提示。 */
+    fun toast(text: String) {
+        _message.value = text
+    }
+
+    // ---------- 端口扫描 ----------
+
+    /** 扫描发现的、疑似网关的端口。 */
+    private val _scannedPorts = MutableStateFlow<List<Int>>(emptyList())
+    val scannedPorts: StateFlow<List<Int>> = _scannedPorts.asStateFlow()
+
+    private val _scanning = MutableStateFlow(false)
+    val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
+
+    /**
+     * 扫描本机端口，找出可能在跑的网关实例。
+     *
+     * 对应原版「供应商」页的「扫描本机端口」。只探测回环地址上
+     * 常见端口段，逐个尝试 `/v1/models`，能返回 OpenAI 结构才算命中。
+     */
+    fun scanLocalPorts() {
+        if (_scanning.value) return
+        _scanning.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val found = mutableListOf<Int>()
+            // 常见端口优先，再扫两个常用区间，避免全量 65535 太慢
+            val candidates = buildList {
+                addAll(listOf(8080, 8081, 8000, 3000, 5000, 11434))
+                addAll(8000..8020)
+                addAll(9000..9010)
+            }.distinct()
+
+            for (p in candidates) {
+                if (probePort(p)) found += p
+            }
+            _scannedPorts.value = found
+            _scanning.value = false
+            _message.value = if (found.isEmpty()) {
+                "未发现其它网关实例"
+            } else {
+                "发现 ${found.size} 个端口：${found.joinToString(", ")}"
+            }
+        }
+    }
+
+    /** 探测单个端口是否是本项目的网关。 */
+    private suspend fun probePort(port: Int): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val socket = java.net.Socket()
+            socket.connect(java.net.InetSocketAddress("127.0.0.1", port), 220)
+            socket.soTimeout = 400
+            socket.getOutputStream().write(
+                "GET /v1/models HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
+                    .toByteArray(),
+            )
+            socket.getOutputStream().flush()
+            val text = socket.getInputStream().bufferedReader().readText()
+            socket.close()
+            text.contains("\"object\"") && text.contains("list")
+        }.getOrDefault(false)
     }
 
     // ---------- 内部 ----------

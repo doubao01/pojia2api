@@ -181,7 +181,7 @@ private fun MainScreen(vms: ViewModels) {
                         ),
                 ) {
                     when (tab) {
-                        0 -> HomeScreen(vms)
+                        0 -> HomeScreen(vms, onOpenAccounts = { tab = 1 })
                         1 -> AccountsScreen(vms)
                         2 -> ModelsScreen(vms)
                         3 -> LogScreen(vms)

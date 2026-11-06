@@ -42,7 +42,7 @@ import io.modelbridge.app.ViewModels
  * 重启后清零；接入地址与密钥沿用原版的语义。
  */
 @Composable
-fun HomeScreen(vms: ViewModels) {
+fun HomeScreen(vms: ViewModels, onOpenAccounts: () -> Unit = {}) {
     val running by vms.runner.running.collectAsState()
     val port by vms.runner.port.collectAsState()
     val entries by vms.runner.log.collectAsState()
@@ -58,6 +58,7 @@ fun HomeScreen(vms: ViewModels) {
         .let { list -> if (list.isEmpty()) 0L else list.sumOf { it.costMillis } / list.size }
     val hitRate = vms.runner.cacheHitRate()
     val (tokenIn, tokenOut) = vms.runner.tokenTotals()
+    val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -119,6 +120,28 @@ fun HomeScreen(vms: ViewModels) {
                 fontSize = 13.sp,
                 color = AppStyle.SubtitleText,
                 lineHeight = 19.sp,
+            )
+        }
+
+        // 快捷入口，对应原版首页底部的「账号管理 / 任务管理 / 策略管理」
+        SectionTitle("管理")
+        SettingsGroup {
+            ActionRow(
+                label = "账号管理",
+                hint = "查看所有供应商已登录的账号",
+                onClick = onOpenAccounts,
+            )
+            RowDivider()
+            ActionRow(
+                label = "任务管理",
+                hint = if (running) "签到、任务、额度" else "先启动网关",
+                onClick = onOpenAccounts,
+            )
+            RowDivider()
+            ActionRow(
+                label = "策略管理",
+                hint = "按模型注入正文，暂未实现",
+                onClick = { Toast.makeText(context, "策略库尚未实现", Toast.LENGTH_SHORT).show() },
             )
         }
     }

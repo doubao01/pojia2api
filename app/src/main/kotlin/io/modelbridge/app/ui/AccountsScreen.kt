@@ -29,6 +29,8 @@ import io.modelbridge.core.Account
 import io.modelbridge.spi.AuthKind
 import io.modelbridge.spi.Credential
 import io.modelbridge.spi.Provider
+import androidx.compose.ui.platform.LocalContext
+import io.modelbridge.app.ConfigTransfer
 
 /**
  * 供应商页：按供应商分组列出账号，可登录、测试、启停、删除。
@@ -40,6 +42,11 @@ import io.modelbridge.spi.Provider
 fun AccountsScreen(vms: ViewModels) {
     val groups by vms.providerGroups.collectAsState()
     val checks by vms.checks.collectAsState()
+    val accounts by vms.accounts.collectAsState()
+    val scanned by vms.scannedPorts.collectAsState()
+    val scanning by vms.scanning.collectAsState()
+    val context = LocalContext.current
+    val transfer = remember { ConfigTransfer(context) }
 
     var editing by remember { mutableStateOf<AccountEdit?>(null) }
     var webLogin by remember { mutableStateOf<AccountEdit?>(null) }
@@ -58,8 +65,44 @@ fun AccountsScreen(vms: ViewModels) {
             modifier = Modifier.padding(top = 2.dp),
         )
 
+        // ---------- 账号级操作 ----------
+        GroupTitle("账号")
+        SettingsGroup {
+            ActionRow(
+                label = "导入账号",
+                hint = "从 JSON 文件追加账号（同一 id 覆盖）",
+                onClick = {
+                    transfer.importAccounts { list -> vms.importAccounts(list) }
+                },
+            )
+            RowDivider()
+            ActionRow(
+                label = "导出账号",
+                hint = "把当前 ${accounts.size} 个账号存成 JSON",
+                onClick = {
+                    if (accounts.isEmpty()) {
+                        vms.toast("还没有账号可导出")
+                    } else {
+                        transfer.exportAccounts(accounts)
+                    }
+                },
+            )
+            RowDivider()
+            ActionRow(
+                label = if (scanning) "扫描中…" else "扫描本机端口",
+                hint = if (scanned.isEmpty()) {
+                    "查找本机在跑的其它网关实例"
+                } else {
+                    "发现：${scanned.joinToString(", ") { ":$it" }}"
+                },
+                onClick = { if (!scanning) vms.scanLocalPorts() },
+            )
+        }
+
+        GroupTitle("供应商")
+
         Column(
-            modifier = Modifier.padding(top = 12.dp),
+            modifier = Modifier.padding(top = 0.dp),
             verticalArrangement = Arrangement.spacedBy(AppStyle.CardSpacing),
         ) {
             groups.forEach { group ->
