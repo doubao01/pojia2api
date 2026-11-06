@@ -53,7 +53,6 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":providers"))
-    implementation(project(":providers"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.app)
