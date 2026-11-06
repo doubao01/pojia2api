@@ -20,6 +20,22 @@ interface Provider {
     val requiresCredential: Boolean get() = authKind != AuthKind.None
 
     /**
+     * 网页登录地址。需要 [AuthKind.Cookie] 或 [AuthKind.OAuth] 的供应商
+     * 提供它，界面会内嵌 WebView 让用户登录后抓取 Cookie。
+     *
+     * 返回 null 表示没有可用的网页登录页（界面会引导用户手动填 Cookie）。
+     */
+    val loginUrl: String? get() = null
+
+    /**
+     * 抓取 Cookie 时尝试的域名列表，按顺序尝试直到拿到内容。
+     *
+     * 通常填供应商的主域，例如 `listOf("chat.deepseek.com")`。
+     * 为空时界面只用 WebView 当前地址的域名。
+     */
+    val cookieDomains: List<String> get() = emptyList()
+
+    /**
      * 拉取该供应商可用的模型列表。
      *
      * @param context 已认证的上下文，包含凭据与 HTTP 客户端

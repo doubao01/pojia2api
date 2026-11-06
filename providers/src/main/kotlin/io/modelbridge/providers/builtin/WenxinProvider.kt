@@ -17,5 +17,11 @@ class WenxinProvider : OpenAiCompatibleProvider() {
 
     override val authKind: AuthKind = AuthKind.OAuth
 
+    /** 网页登录地址；界面内嵌 WebView 登录后抓取 Cookie。 */
+    override val loginUrl: String = "https://yiyan.baidu.com"
+
+    /** 抓 Cookie 时尝试的域名。 */
+    override val cookieDomains: List<String> = listOf("yiyan.baidu.com", "baidu.com")
+
     override val defaultBaseUrl: String = "https://qianfan.baidubce.com/v2"
 }

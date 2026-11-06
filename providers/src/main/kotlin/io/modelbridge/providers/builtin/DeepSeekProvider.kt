@@ -17,5 +17,11 @@ class DeepSeekProvider : OpenAiCompatibleProvider() {
 
     override val authKind: AuthKind = AuthKind.Cookie
 
+    /** 网页登录地址；界面内嵌 WebView 登录后抓取 Cookie。 */
+    override val loginUrl: String = "https://chat.deepseek.com/sign_in"
+
+    /** 抓 Cookie 时尝试的域名。 */
+    override val cookieDomains: List<String> = listOf("chat.deepseek.com", "deepseek.com")
+
     override val defaultBaseUrl: String = "https://api.deepseek.com/v1"
 }

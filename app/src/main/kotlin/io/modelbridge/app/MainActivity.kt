@@ -1,8 +1,11 @@
 package io.modelbridge.app
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,10 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.AccountsScreen
 import io.modelbridge.app.ui.AppStyle
 import io.modelbridge.app.ui.BridgeTheme
@@ -40,17 +41,64 @@ class MainActivity : ComponentActivity() {
         get() = application as BridgeApplication
 
     private val vms: ViewModels by viewModels {
-        viewModelFactory { initializer { ViewModels(app.container, GatewayRunner(app.container.gateway)) } }
+        viewModelFactory {
+            initializer {
+                ViewModels(
+                    container = app.container,
+                    runner = GatewayRunner(
+                        gatewayProvider = { app.container.gateway },
+                        settings = app.container.settings,
+                    ),
+                )
+            }
+        }
     }
 
-    private val serviceManager = ServiceManager(this)
+    /** 导出：用户选好位置后把 JSON 写进去。 */
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        val payload = ConfigTransfer.pendingJson
+        ConfigTransfer.pendingJson = null
+        if (uri != null && payload != null) {
+            writeTextToUri(this, uri, payload)
+        }
+    }
+
+    /** 导入：读到文件后解析并交给回调。 */
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val callback = ConfigTransfer.pendingImport
+        ConfigTransfer.pendingImport = null
+        if (uri != null && callback != null) {
+            val raw = readTextFromUri(this, uri)
+            val bundle = raw?.let { ConfigTransfer.parse(it) }
+            if (bundle != null) callback(bundle)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 把系统文件选择器的启动方式接到 Activity 的 result API 上。
+        // ConfigTransfer 里 startActivity 只是为了唤起选择器，真正的
+        // 落盘/读取在这里完成。
+        ConfigTransferBridge.exportRequest = { exportLauncher.launch("modelbridge-config.json") }
+        ConfigTransferBridge.importRequest = { importLauncher.launch(arrayOf("application/json", "*/*")) }
+
         setContent {
             BridgeTheme {
                 MainScreen(vms)
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // 若开启了开机自启且网关没跑，进入界面时拉起
+        if (app.container.settings.current().autoStart && !vms.runner.running.value) {
+            vms.runner.start()
         }
     }
 }

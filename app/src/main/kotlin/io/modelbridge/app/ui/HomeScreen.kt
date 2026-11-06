@@ -16,16 +16,21 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import io.modelbridge.app.ViewModels
 
 /**
@@ -42,6 +47,8 @@ fun HomeScreen(vms: ViewModels) {
     val port by vms.runner.port.collectAsState()
     val entries by vms.runner.log.collectAsState()
     val models by vms.models.collectAsState()
+    val settings by vms.settings.collectAsState()
+    val accessKey = settings.accessKey
 
     val total = entries.size
     val ok = entries.count { it.status in 200..299 }
@@ -49,6 +56,7 @@ fun HomeScreen(vms: ViewModels) {
     val successRate = if (total > 0) ok * 100.0 / total else 0.0
     val avgCost = entries.filter { it.costMillis > 0 }
         .let { list -> if (list.isEmpty()) 0L else list.sumOf { it.costMillis } / list.size }
+    val hitRate = vms.runner.cacheHitRate()
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -77,15 +85,28 @@ fun HomeScreen(vms: ViewModels) {
             StatCard("平均耗时", if (avgCost > 0) "${avgCost} ms" else "—", Modifier.weight(1f))
             StatCard("可用模型", models.size.toString(), Modifier.weight(1f))
         }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = AppStyle.CardSpacing),
+            horizontalArrangement = Arrangement.spacedBy(AppStyle.CardSpacing),
+        ) {
+            StatCard(
+                "缓存命中率",
+                hitRate?.let { "%.1f%%".format(it) } ?: "—",
+                Modifier.weight(1f),
+            )
+            Box(modifier = Modifier.weight(2f))
+        }
 
         // 接入信息
         SectionTitle("Agent 接入地址")
+        val lanUrl = if (running) "http://本机IP:$port/v1" else "网关已停止"
+        val localUrl = if (running) "http://127.0.0.1:$port/v1" else "网关已停止"
         InfoCard {
-            InfoRow("局域网", if (running) "http://本机IP:$port/v1" else "网关已停止")
-            InfoRow("仅本机", if (running) "http://127.0.0.1:$port/v1" else "网关已停止")
+            CopyRow("局域网", lanUrl, running)
+            CopyRow("仅本机", localUrl, running)
             InfoRow(
                 "访问密钥",
-                "未设置，本机任意客户端可访问",
+                accessKey.ifBlank { "未设置，本机任意客户端可访问" },
             )
         }
 
@@ -220,5 +241,45 @@ private fun InfoRow(label: String, value: String) {
             color = AppStyle.BodyText,
             fontFamily = FontFamily.Monospace,
         )
+    }
+}
+
+/**
+ * 可复制的信息行。
+ *
+ * 原版首页的接入地址旁有一个「复制」按钮，复制后可直接粘进 Agent 配置。
+ */
+@Composable
+private fun CopyRow(label: String, value: String, copyable: Boolean) {
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = label, fontSize = 13.sp, color = AppStyle.SubtitleText)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = value,
+                fontSize = 13.sp,
+                color = AppStyle.BodyText,
+                fontFamily = FontFamily.Monospace,
+            )
+            if (copyable) {
+                TextButton(
+                    onClick = {
+                        clipboard.setText(AnnotatedString(value))
+                        Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                    },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 6.dp,
+                    ),
+                ) {
+                    Text("复制", fontSize = 12.sp)
+                }
+            }
+        }
     }
 }

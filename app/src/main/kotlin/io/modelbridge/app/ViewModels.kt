@@ -2,10 +2,15 @@ package io.modelbridge.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.modelbridge.app.prefs.GatewaySettings
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
 import io.modelbridge.core.ProviderRegistry
+import io.modelbridge.spi.Credential
 import io.modelbridge.spi.ModelInfo
+import io.modelbridge.spi.Provider
+import io.modelbridge.spi.ProviderContext
+import io.modelbridge.spi.ValidationResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * 持有界面状态、连接内核的 ViewModel。
@@ -37,6 +43,12 @@ class ViewModels(
     private val _modelsError = MutableStateFlow<String?>(null)
     val modelsError: StateFlow<String?> = _modelsError.asStateFlow()
 
+    /** 设置。 */
+    val settings: StateFlow<GatewaySettings> = container.settings.settings
+
+    /** 账号。 */
+    val accounts: StateFlow<List<Account>> = container.accountStore.accountsFlow
+
     /** 供应商分组。账号变更时自动重建。 */
     val providerGroups: StateFlow<List<ProviderGroup>> = container.accountStore
         .accountsFlow
@@ -50,9 +62,19 @@ class ViewModels(
     /** 访问日志。 */
     val log: StateFlow<List<LogEntry>> = runner.log
 
+    /** 连通性检测结果，按账号 id 索引。 */
+    private val _checks = MutableStateFlow<Map<String, String>>(emptyMap())
+    val checks: StateFlow<Map<String, String>> = _checks.asStateFlow()
+
+    /** 一次性提示消息（Toast 用）。 */
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+
     init {
         refreshModels()
     }
+
+    // ---------- 模型 ----------
 
     /** 拉取一次模型目录。 */
     fun refreshModels() {
@@ -72,6 +94,20 @@ class ViewModels(
         }
     }
 
+    // ---------- 设置 ----------
+
+    fun updateSettings(block: (GatewaySettings) -> GatewaySettings) {
+        container.settings.edit(block)
+        container.applySettings()
+    }
+
+    fun resetSettings() {
+        container.settings.resetToDefaults()
+        container.applySettings()
+    }
+
+    // ---------- 账号 ----------
+
     /** 启停某个供应商下的全部账号。 */
     fun toggleProvider(providerId: String, enabled: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -83,6 +119,112 @@ class ViewModels(
             refreshModels()
         }
     }
+
+    /** 启停单个账号。 */
+    fun toggleAccount(accountId: String, enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val account = container.accountStore.find(accountId) ?: return@launch
+            container.accountStore.upsert(account.copy(enabled = enabled))
+            refreshModels()
+        }
+    }
+
+    /**
+     * 添加或覆盖一个账号。
+     *
+     * @param id 传 null 表示新建
+     */
+    fun saveAccount(
+        id: String? = null,
+        providerId: String,
+        label: String,
+        credential: Credential,
+        baseUrl: String = "",
+        enabled: Boolean = true,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val existing = id?.let { container.accountStore.find(it) }
+            val account = Account(
+                id = id ?: "${providerId}-${UUID.randomUUID().toString().take(8)}",
+                providerId = providerId,
+                label = label.ifBlank { existing?.label ?: providerName(providerId) },
+                enabled = enabled,
+                credential = credential,
+                baseUrl = baseUrl.ifBlank { existing?.baseUrl ?: "" },
+                priority = existing?.priority ?: 0,
+                disabledModels = existing?.disabledModels ?: emptySet(),
+            )
+            container.accountStore.upsert(account)
+            refreshModels()
+            _message.value = "已保存 ${account.label}"
+        }
+    }
+
+    /** 删除账号。 */
+    fun deleteAccount(accountId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            container.accountStore.delete(accountId)
+            refreshModels()
+            _message.value = "已删除账号"
+        }
+    }
+
+    /** 批量导入账号（用于「导入账号」与「导入配置」）。 */
+    fun importAccounts(list: List<Account>, replace: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (replace) {
+                container.accountStore.all().forEach { container.accountStore.delete(it.id) }
+            }
+            list.forEach { container.accountStore.upsert(it) }
+            refreshModels()
+            _message.value = "已导入 ${list.size} 个账号"
+        }
+    }
+
+    /**
+     * 检测单个账号的连通性。
+     *
+     * 直接调用供应商的 `validate`，结果写进 [checks]。
+     */
+    fun checkAccount(account: Account) {
+        _checks.value = _checks.value + (account.id to "检测中…")
+        viewModelScope.launch(Dispatchers.IO) {
+            val provider = registry.find(account.providerId)
+            val result = if (provider == null) {
+                "供应商未找到"
+            } else {
+                runCatching {
+                    provider.validate(contextFor(provider, account))
+                }.fold(
+                    onSuccess = { r ->
+                        when (r) {
+                            is ValidationResult.Valid -> "可用"
+                            is ValidationResult.Invalid -> "失败：${r.reason}"
+                        }
+                    },
+                    onFailure = { "失败：${it.message ?: it::class.java.simpleName}" },
+                )
+            }
+            _checks.value = _checks.value + (account.id to result)
+        }
+    }
+
+    fun clearMessage() {
+        _message.value = null
+    }
+
+    // ---------- 内部 ----------
+
+    private fun contextFor(provider: Provider, account: Account): ProviderContext =
+        object : ProviderContext {
+            override val credential = account.credential
+            override val http = container.httpClient
+            // 账号没填自定义地址时留空，由供应商实现决定默认地址
+            override val baseUrl = account.baseUrl
+        }
+
+    private fun providerName(providerId: String): String =
+        registry.find(providerId)?.displayName ?: providerId
 
     private fun buildGroups(): List<ProviderGroup> =
         registry.all().map { provider ->

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,12 +44,25 @@ fun LogScreen(vms: ViewModels) {
             fontWeight = FontWeight.SemiBold,
             color = AppStyle.BodyText,
         )
-        Text(
-            "${entries.value.size} 条（最近 500 条）· 新的在上",
-            fontSize = 12.sp,
-            color = AppStyle.SubtitleText,
-            modifier = Modifier.padding(top = 2.dp),
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Text(
+                "${entries.value.size} 条（最近 500 条）· 新的在上",
+                fontSize = 12.sp,
+                color = AppStyle.SubtitleText,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            OutlinedButton(
+                onClick = { vms.runner.clearLog() },
+                enabled = entries.value.isNotEmpty(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+            ) {
+                Text("清空", fontSize = 13.sp)
+            }
+        }
 
         if (visible.isEmpty()) {
             Text(

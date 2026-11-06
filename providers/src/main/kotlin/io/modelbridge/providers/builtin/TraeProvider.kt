@@ -17,6 +17,12 @@ class TraeProvider : OpenAiCompatibleProvider() {
 
     override val authKind: AuthKind = AuthKind.OAuth
 
+    /** 网页登录地址；界面内嵌 WebView 登录后抓取 Cookie。 */
+    override val loginUrl: String = "https://www.trae.ai"
+
+    /** 抓 Cookie 时尝试的域名。 */
+    override val cookieDomains: List<String> = listOf("trae.ai", "www.trae.ai")
+
     override val defaultBaseUrl: String = ""
 
     /** 由账号配置传入上游地址。 */

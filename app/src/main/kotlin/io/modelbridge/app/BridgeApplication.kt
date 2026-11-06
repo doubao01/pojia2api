@@ -1,16 +1,17 @@
 package io.modelbridge.app
 
 import android.app.Application
+import io.modelbridge.app.prefs.AccountPreferences
+import io.modelbridge.app.prefs.SettingsStore
+import io.modelbridge.core.AccountStore
 import io.modelbridge.core.Gateway
 import io.modelbridge.core.GatewayConfig
 import io.modelbridge.core.HealthTracker
-import io.modelbridge.core.InMemoryAccountStore
 import io.modelbridge.core.ModelCatalog
 import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.core.Router
 import io.modelbridge.core.http.JvmHttpClient
 import io.modelbridge.providers.BuiltInProviders
-import io.modelbridge.providers.OpenAiCompatibleProvider
 import io.modelbridge.spi.HttpClient
 import io.modelbridge.spi.Provider
 import io.modelbridge.spi.ProviderContext
@@ -42,23 +43,33 @@ class AppContainer(private val app: Application) {
 
     val httpClient: HttpClient = JvmHttpClient()
 
-    /** 供应商注册表，内置 16 家。 */
+    /** 供应商注册表，内置 14 家。 */
     val registry: ProviderRegistry = ProviderRegistry().apply {
         BuiltInProviders.registerInto(this)
     }
 
-    /** 账号仓储；生产实现后续替换为加密 SharedPreferences。 */
-    val accountStore = InMemoryAccountStore()
+    /** 设置，持久化在 SharedPreferences。 */
+    val settings = SettingsStore(app)
 
-    private val health = HealthTracker()
+    /** 账号仓储，持久化在 SharedPreferences，重启不丢。 */
+    val accountStore: AccountStore = AccountPreferences(app)
+
+    /**
+     * 健康追踪。阈值取自设置，修改后需重建容器或调用 [applySettings]。
+     */
+    private var health = HealthTracker(
+        failureThreshold = settings.current().failureThreshold,
+        cooldownMillis = settings.current().cooldownSeconds * 1000L,
+    )
 
     val catalog = ModelCatalog(registry, accountStore)
 
-    val router = Router(registry, accountStore, health)
+    var router = Router(registry, accountStore, health)
+        private set
 
     /** 构造已认证的调用上下文。 */
     private val contextFactory: (Provider, io.modelbridge.core.Account) -> ProviderContext =
-        { provider, account ->
+        { _, account ->
             object : ProviderContext {
                 override val credential = account.credential
                 override val http = httpClient
@@ -66,13 +77,48 @@ class AppContainer(private val app: Application) {
             }
         }
 
-    val gateway = Gateway(
+    /**
+     * 网关配置随设置变化。访问密钥不为空即启用鉴权。
+     */
+    private fun buildConfig() = GatewayConfig(
+        apiKeys = settings.current().accessKey
+            .takeIf { it.isNotBlank() }
+            ?.let { setOf(it) }
+            ?: emptySet(),
+    )
+
+    var gateway = Gateway(
         router = router,
         catalog = catalog,
         registry = registry,
         accounts = accountStore,
         health = health,
         contextFactory = contextFactory,
-        config = GatewayConfig(),
+        config = buildConfig(),
     )
+        private set
+
+    /**
+     * 设置变更后重建受影响的组件。
+     *
+     * 健康阈值与鉴权密钥是构造期注入的，改完必须重建；
+     * 端口/日志上限等在 [GatewayRunner.start] 时读取，无需重建。
+     */
+    fun applySettings() {
+        val s = settings.current()
+        health = HealthTracker(
+            failureThreshold = s.failureThreshold,
+            cooldownMillis = s.cooldownSeconds * 1000L,
+        )
+        router = Router(registry, accountStore, health)
+        gateway = Gateway(
+            router = router,
+            catalog = catalog,
+            registry = registry,
+            accounts = accountStore,
+            health = health,
+            contextFactory = contextFactory,
+            config = buildConfig(),
+        )
+    }
 }

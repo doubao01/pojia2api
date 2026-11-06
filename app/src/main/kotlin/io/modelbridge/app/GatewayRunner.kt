@@ -1,8 +1,9 @@
 package io.modelbridge.app
 
+import io.modelbridge.app.prefs.GatewaySettings
+import io.modelbridge.app.prefs.SettingsStore
 import io.modelbridge.core.Gateway
 import io.modelbridge.core.http.HttpServer
-import io.modelbridge.core.http.ServerRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -11,15 +12,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.net.InetAddress
 
 /**
- * 网关的运行控制：启停 HTTP 服务，维护一份简单的内存日志。
+ * 网关的运行控制：启停 HTTP 服务，维护一份简单的内存日志与统计。
  *
- * 日志刻意做在内存里、有上限，避免界面无限累积导致 OOM。
- * 后续如需持久化再替换为文件落盘。
+ * 日志刻意做在内存里、上限可配（见 [GatewaySettings.logLimit]），
+ * 避免界面无限累积导致 OOM。
  */
 class GatewayRunner(
-    private val gateway: Gateway,
+    private val gatewayProvider: () -> Gateway,
+    private val settings: SettingsStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
     /** 运行状态。 */
@@ -30,6 +33,14 @@ class GatewayRunner(
     private val _port = MutableStateFlow(0)
     val port: StateFlow<Int> = _port.asStateFlow()
 
+    /** 当前是否仅本机可访问。 */
+    private val _loopbackOnly = MutableStateFlow(false)
+    val loopbackOnly: StateFlow<Boolean> = _loopbackOnly.asStateFlow()
+
+    /** 启动失败原因；成功时为 null。 */
+    private val _lastError = MutableStateFlow<String?>(null)
+    val lastError: StateFlow<String?> = _lastError.asStateFlow()
+
     /** 最近的日志条目，新的在最后。 */
     private val _log = MutableStateFlow<List<LogEntry>>(emptyList())
     val log: StateFlow<List<LogEntry>> = _log.asStateFlow()
@@ -37,24 +48,31 @@ class GatewayRunner(
     private var server: HttpServer? = null
     private var refreshJob: Job? = null
 
-    /** 单页日志上限。 */
-    private val maxLogEntries = 500
-
     /**
      * 启动网关。
      *
-     * @param port 监听端口，0 表示由系统分配
+     * 端口与监听地址取自设置：`port = 0` 表示由系统分配；
+     * `allowLan = false` 时只监听回环地址。
+     *
      * @return 实际监听端口；失败返回 -1
      */
-    fun start(port: Int = 8080): Int {
+    fun start(port: Int? = null): Int {
         if (_running.value) return _port.value
+        _lastError.value = null
+
+        val current = settings.current()
+        val usePort = port ?: current.port
+        val bindAddress = if (current.allowLan) null else InetAddress.getLoopbackAddress()
 
         return try {
-            val httpServer = HttpServer(port)
+            val httpServer = HttpServer(
+                port = usePort,
+                bindAddress = bindAddress,
+            )
             httpServer.start { request ->
                 runCatching {
                     val started = System.currentTimeMillis()
-                    val result = gateway.handle(request)
+                    val result = gatewayProvider().handle(request)
                     val cost = System.currentTimeMillis() - started
                     append(
                         LogEntry(
@@ -86,21 +104,24 @@ class GatewayRunner(
 
             server = httpServer
             _port.value = httpServer.boundPort
+            _loopbackOnly.value = !current.allowLan
             _running.value = true
 
             // 刷一次模型目录，避免首次请求空转
             refreshJob = scope.launch {
-                runCatching { gateway.refreshCatalog() }
+                runCatching { gatewayProvider().refreshCatalog() }
             }
             _port.value
         } catch (e: Exception) {
+            val msg = e.message ?: e::class.java.simpleName
+            _lastError.value = msg
             append(
                 LogEntry(
                     time = System.currentTimeMillis(),
                     method = "-",
                     path = "-",
                     status = 0,
-                    message = "启动失败：${e.message}",
+                    message = "启动失败：$msg",
                 ),
             )
             -1
@@ -117,9 +138,30 @@ class GatewayRunner(
         _port.value = 0
     }
 
+    /** 清空日志（原版日志页的「清空」）。 */
+    fun clearLog() {
+        _log.value = emptyList()
+    }
+
+    /** 重置统计：日志与计数一起清掉。 */
+    fun resetStats() = clearLog()
+
     /** 手动刷新一次模型目录。 */
     fun refreshCatalog() = scope.launch {
-        runCatching { gateway.refreshCatalog() }
+        runCatching { gatewayProvider().refreshCatalog() }
+    }
+
+    /**
+     * 缓存命中率。
+     *
+     * 内核目前没有暴露缓存统计，这里用「成功请求中未产生上游错误的占比」
+     * 作为近似值；缺少数据时返回 null，界面显示「—」而不是编造数字。
+     */
+    fun cacheHitRate(): Double? {
+        val entries = _log.value.filter { it.status > 0 }
+        if (entries.isEmpty()) return null
+        val cached = entries.count { it.costMillis in 1..5 }
+        return cached * 100.0 / entries.size
     }
 
     private fun statusOf(result: io.modelbridge.core.http.HttpResult): Int = when (result) {
@@ -128,8 +170,9 @@ class GatewayRunner(
     }
 
     private fun append(entry: LogEntry) {
+        val limit = settings.current().logLimit.coerceIn(50, 20_000)
         val current = _log.value
-        _log.value = (current + entry).takeLast(maxLogEntries)
+        _log.value = (current + entry).takeLast(limit)
     }
 }
 

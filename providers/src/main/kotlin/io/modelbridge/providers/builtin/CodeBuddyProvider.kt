@@ -16,5 +16,11 @@ class CodeBuddyProvider : OpenAiCompatibleProvider() {
 
     override val authKind: AuthKind = AuthKind.OAuth
 
+    /** 网页登录地址；界面内嵌 WebView 登录后抓取 Cookie。 */
+    override val loginUrl: String = "https://www.codebuddy.cn/login"
+
+    /** 抓 Cookie 时尝试的域名。 */
+    override val cookieDomains: List<String> = listOf("www.codebuddy.cn", "codebuddy.cn")
+
     override val defaultBaseUrl: String = "https://www.codebuddy.cn"
 }

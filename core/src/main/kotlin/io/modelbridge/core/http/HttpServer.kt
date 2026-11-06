@@ -80,6 +80,11 @@ class HttpServer(
     private val maxHeaderBytes: Int = 64 * 1024,
     private val maxBodyBytes: Int = 32 * 1024 * 1024,
     private val idleTimeoutMillis: Int = 75_000,
+    /**
+     * 监听地址。默认监听所有网卡（局域网可访问）；
+     * 传 [java.net.InetAddress.getLoopbackAddress] 则仅本机可访问。
+     */
+    private val bindAddress: java.net.InetAddress? = null,
 ) {
     private var serverSocket: ServerSocket? = null
     private var scope: CoroutineScope? = null
@@ -99,7 +104,7 @@ class HttpServer(
 
         val socket = ServerSocket().apply {
             reuseAddress = true
-            bind(InetSocketAddress(port))
+            bind(InetSocketAddress(bindAddress, port))
         }
         serverSocket = socket
 
