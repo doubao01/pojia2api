@@ -57,6 +57,7 @@ fun HomeScreen(vms: ViewModels) {
     val avgCost = entries.filter { it.costMillis > 0 }
         .let { list -> if (list.isEmpty()) 0L else list.sumOf { it.costMillis } / list.size }
     val hitRate = vms.runner.cacheHitRate()
+    val (tokenIn, tokenOut) = vms.runner.tokenTotals()
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -64,7 +65,7 @@ fun HomeScreen(vms: ViewModels) {
         StatusCard(
             running = running,
             port = port,
-            onToggle = { if (running) vms.runner.stop() else vms.runner.start(8080) },
+            onToggle = { if (running) vms.stopGateway() else vms.startGateway() },
         )
 
         // 概览统计
@@ -94,7 +95,8 @@ fun HomeScreen(vms: ViewModels) {
                 hitRate?.let { "%.1f%%".format(it) } ?: "—",
                 Modifier.weight(1f),
             )
-            Box(modifier = Modifier.weight(2f))
+            StatCard("输入 token", tokenIn.toString(), Modifier.weight(1f))
+            StatCard("输出 token", tokenOut.toString(), Modifier.weight(1f))
         }
 
         // 接入信息

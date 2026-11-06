@@ -70,23 +70,25 @@ class SettingsStore(
     /** 当前值的快照。 */
     fun current(): GatewaySettings = _settings.value
 
-    /** 写入一份完整设置。 */
+    /** 写入一份完整设置。非法的端口会被拒，保持原值。 */
     fun update(value: GatewaySettings) {
+        // 界面已限范围，这里兜底：将来若有别的入口写入，也不会存下非法端口
+        val safe = if (value.isValid()) value else value.copy(port = current().port)
         prefs.edit().apply {
-            putInt(K_PORT, value.port)
-            putBoolean(K_ALLOW_LAN, value.allowLan)
-            putString(K_ACCESS_KEY, value.accessKey)
-            putInt(K_MAX_RETRIES, value.maxRetries)
-            putInt(K_FAILURE_THRESHOLD, value.failureThreshold)
-            putInt(K_COOLDOWN, value.cooldownSeconds)
-            putInt(K_TIMEOUT, value.requestTimeoutSeconds)
-            putInt(K_LOG_LIMIT, value.logLimit)
-            putBoolean(K_AUTO_START, value.autoStart)
-            putBoolean(K_FLOATING, value.showFloatingBall)
+            putInt(K_PORT, safe.port)
+            putBoolean(K_ALLOW_LAN, safe.allowLan)
+            putString(K_ACCESS_KEY, safe.accessKey)
+            putInt(K_MAX_RETRIES, safe.maxRetries)
+            putInt(K_FAILURE_THRESHOLD, safe.failureThreshold)
+            putInt(K_COOLDOWN, safe.cooldownSeconds)
+            putInt(K_TIMEOUT, safe.requestTimeoutSeconds)
+            putInt(K_LOG_LIMIT, safe.logLimit)
+            putBoolean(K_AUTO_START, safe.autoStart)
+            putBoolean(K_FLOATING, safe.showFloatingBall)
             putInt(K_FLOATING_SIZE, value.floatingBallSizeDp)
-            putBoolean(K_STRIP_FP, value.stripClientFingerprint)
+            putBoolean(K_STRIP_FP, safe.stripClientFingerprint)
         }.apply()
-        _settings.value = value
+        _settings.value = safe
     }
 
     /** 局部修改。 */

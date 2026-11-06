@@ -3,6 +3,7 @@ package io.modelbridge.app
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.modelbridge.app.prefs.GatewaySettings
+import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
 import io.modelbridge.core.ProviderRegistry
@@ -29,7 +30,23 @@ import java.util.UUID
 class ViewModels(
     private val container: AppContainer,
     val runner: GatewayRunner,
+    private val serviceManager: ServiceManager,
 ) : ViewModel() {
+
+    /**
+     * 启动网关。
+     *
+     * 走后台服务而非直接调 runner：Android 会回收后台进程，
+     * 网关被回收后手机上的客户端就连不上了。
+     */
+    fun startGateway(port: Int = 8080) {
+        serviceManager.start(port)
+    }
+
+    /** 停止网关。 */
+    fun stopGateway() {
+        serviceManager.stop()
+    }
 
     private val registry: ProviderRegistry = container.registry
 

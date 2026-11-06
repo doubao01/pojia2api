@@ -9,8 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import io.modelbridge.app.BridgeApplication
 import io.modelbridge.app.GatewayRunner
 import io.modelbridge.app.MainActivity
+import io.modelbridge.app.prefs.SettingsStore
 import io.modelbridge.core.Gateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +39,9 @@ class GatewayService : Service() {
 
     private val _running = MutableStateFlow<Boolean>(false)
 
+    /** 设置存储，在 initialize() 里指定。 */
+    private var settings: SettingsStore? = null
+
     /** 先绑定的网关，在 initialize() 里指定。 */
     private var gateway: Gateway? = null
 
@@ -50,6 +55,41 @@ class GatewayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = serviceBinder
 
+    /**
+     * 处理启动 / 停止指令。
+     *
+     * 每次被调用都要先转前台：Android 要求 startForegroundService 之后
+     * 5 秒内调用 startForeground，否则会抛异常。
+     */
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val action = intent?.action
+        val app = application as? BridgeApplication
+
+        // 服务可能在进程重启后被系统重新拉起，此时还没注入过依赖
+        if (runner == null && app != null) {
+            initialize({ app.container.gateway }, app.container.settings)
+        }
+
+        sendNotification()
+
+        when (action) {
+            ACTION_START -> {
+                val port = intent.getIntExtra(INTENT_PORT, DEFAULT_PORT)
+                start(port)
+            }
+            ACTION_STOP -> stopGateway()
+            else -> Unit
+        }
+
+        // 被系统杀掉后不要自动重建：由用户显式启动更可控
+        return START_NOT_STICKY
+    }
+
+    override fun onDestroy() {
+        scope.launch { runCatching { runner?.stop() } }
+        super.onDestroy()
+    }
+
     private val serviceBinder = GatewayServiceBinder()
 
     inner class GatewayServiceBinder : Binder() {
@@ -61,9 +101,12 @@ class GatewayService : Service() {
      *
      * 后续所有调用都通过 [start] / [stopGateway]。
      */
-    fun initialize(gateway: Gateway) {
-        this.gateway = gateway
-        runner = GatewayRunner(gateway)
+    fun initialize(gatewayProvider: () -> Gateway, settings: SettingsStore) {
+        this.gateway = gatewayProvider()
+        this.settings = settings
+        // 传入提供者而非实例：设置变更后应用会重建 Gateway，
+        // 启动时再取值才能拿到最新的那个。
+        runner = GatewayRunner(gatewayProvider, settings)
         sendNotification()
     }
 
@@ -154,3 +197,12 @@ class GatewayService : Service() {
 
 /** 默认监听端口。 */
 const val DEFAULT_PORT = 8080
+
+/** 启动指令。 */
+const val ACTION_START = "io.modelbridge.action.START"
+
+/** 停止指令。 */
+const val ACTION_STOP = "io.modelbridge.action.STOP"
+
+/** 端口参数名。 */
+const val INTENT_PORT = "io.modelbridge.port"

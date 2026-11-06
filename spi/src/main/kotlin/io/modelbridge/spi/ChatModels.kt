@@ -107,9 +107,21 @@ data class ToolCallDelta(
     val argumentsDelta: String? = null,
 )
 
-/** token 用量。 */
+/**
+ * token 用量。
+ *
+ * [cachedTokens] 是提示词里命中缓存的部分。不同厂商字段名不同
+ * （OpenAI 的 prompt_tokens_details.cached_tokens、
+ *  Anthropic 的 cache_read_input_tokens、
+ *  DeepSeek 的 prompt_cache_hit_tokens），各 Provider 负责归一到这里。
+ */
 data class Usage(
     val promptTokens: Int,
     val completionTokens: Int,
     val totalTokens: Int = promptTokens + completionTokens,
-)
+    val cachedTokens: Int = 0,
+) {
+    /** 缓存命中率（0–100）。没有提示词时返回 null，不编造数字。 */
+    val cacheHitRate: Double?
+        get() = if (promptTokens > 0) cachedTokens * 100.0 / promptTokens else null
+}

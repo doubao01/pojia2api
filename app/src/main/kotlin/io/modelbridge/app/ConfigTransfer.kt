@@ -33,7 +33,7 @@ class ConfigTransfer(private val context: Context) {
             accounts = accounts,
         )
         return runCatching {
-            pendingJson = JSON.encodeToString(payload)
+            pendingJson = JSON.encodeToString(ConfigBundle.serializer(), payload)
             val launch = ConfigTransferBridge.exportRequest
                 ?: return "保存界面未就绪，请重试"
             launch()

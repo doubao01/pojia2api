@@ -4,6 +4,7 @@ import io.modelbridge.app.prefs.GatewaySettings
 import io.modelbridge.app.prefs.SettingsStore
 import io.modelbridge.core.Gateway
 import io.modelbridge.core.http.HttpServer
+import io.modelbridge.spi.Usage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,6 +43,20 @@ class GatewayRunner(
     val lastError: StateFlow<String?> = _lastError.asStateFlow()
 
     /** 最近的日志条目，新的在最后。 */
+    /**
+     * 最近一次上游返回的用量。
+     *
+     * 网关在写出响应时回调，随后 append 记录日志时取用；
+     * 用 @Volatile 是因为回调可能发生在 HTTP 工作线程。
+     */
+    @Volatile
+    private var lastUsage: Usage? = null
+
+    /** 供 Gateway 构造时注入，把上游用量接进来。 */
+    fun reportUsage(usage: Usage) {
+        lastUsage = usage
+    }
+
     private val _log = MutableStateFlow<List<LogEntry>>(emptyList())
     val log: StateFlow<List<LogEntry>> = _log.asStateFlow()
 
@@ -158,10 +173,18 @@ class GatewayRunner(
      * 作为近似值；缺少数据时返回 null，界面显示「—」而不是编造数字。
      */
     fun cacheHitRate(): Double? {
-        val entries = _log.value.filter { it.status > 0 }
+        // 用上游返回的真实用量算，而不是靠响应耗时猜
+        val entries = _log.value.filter { it.promptTokens > 0 }
         if (entries.isEmpty()) return null
-        val cached = entries.count { it.costMillis in 1..5 }
-        return cached * 100.0 / entries.size
+        val cached = entries.sumOf { it.cachedTokens }
+        val prompt = entries.sumOf { it.promptTokens }
+        return if (prompt > 0) cached * 100.0 / prompt else null
+    }
+
+    /** 累计 token 用量，供首页统计展示。 */
+    fun tokenTotals(): Pair<Int, Int> {
+        val entries = _log.value
+        return entries.sumOf { it.promptTokens } to entries.sumOf { it.completionTokens }
     }
 
     private fun statusOf(result: io.modelbridge.core.http.HttpResult): Int = when (result) {
@@ -172,7 +195,17 @@ class GatewayRunner(
     private fun append(entry: LogEntry) {
         val limit = settings.current().logLimit.coerceIn(50, 20_000)
         val current = _log.value
-        _log.value = (current + entry).takeLast(limit)
+        // 把本次请求拿到的用量附到这条日志上，取完即清，避免串到下一条
+        val usage = lastUsage
+        lastUsage = null
+        val filled = usage?.let {
+            entry.copy(
+                promptTokens = it.promptTokens,
+                completionTokens = it.completionTokens,
+                cachedTokens = it.cachedTokens,
+            )
+        } ?: entry
+        _log.value = (current + filled).takeLast(limit)
     }
 }
 
@@ -184,4 +217,10 @@ data class LogEntry(
     val status: Int,
     val costMillis: Long = 0,
     val message: String? = null,
+    /** 上游返回的提示词 token，0 表示这次没有拿到用量。 */
+    val promptTokens: Int = 0,
+    /** 上游返回的补全 token。 */
+    val completionTokens: Int = 0,
+    /** 提示词里命中缓存的部分。 */
+    val cachedTokens: Int = 0,
 )

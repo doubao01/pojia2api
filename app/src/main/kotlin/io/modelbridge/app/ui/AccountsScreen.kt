@@ -288,6 +288,7 @@ internal fun credentialLabel(credential: Credential): String = when (credential)
     is Credential.ApiKey -> "API Key"
     is Credential.Cookies -> "Cookie"
     is Credential.Session -> "会话"
+    is Credential.OAuth -> "OAuth 令牌"
 }
 
 internal fun authLabel(kind: AuthKind): String = when (kind) {

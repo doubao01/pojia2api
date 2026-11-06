@@ -9,12 +9,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.AccountsScreen
 import io.modelbridge.app.ui.AppStyle
 import io.modelbridge.app.ui.BridgeTheme
@@ -34,6 +37,10 @@ import io.modelbridge.app.ui.LogScreen
 import io.modelbridge.app.ui.ModelsScreen
 import io.modelbridge.app.ui.PillTabBar
 import io.modelbridge.app.ui.SettingsScreen
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
@@ -43,12 +50,16 @@ class MainActivity : ComponentActivity() {
     private val vms: ViewModels by viewModels {
         viewModelFactory {
             initializer {
+                val runner = GatewayRunner(
+                    gatewayProvider = { app.container.gateway },
+                    settings = app.container.settings,
+                )
+                // 把上游用量接进访问日志，首页才能显示真实的 token 与命中率
+                app.container.onUsage = runner::reportUsage
                 ViewModels(
                     container = app.container,
-                    runner = GatewayRunner(
-                        gatewayProvider = { app.container.gateway },
-                        settings = app.container.settings,
-                    ),
+                    runner = runner,
+                    serviceManager = ServiceManager(applicationContext),
                 )
             }
         }
@@ -177,6 +188,31 @@ private fun MainScreen(vms: ViewModels) {
                         else -> SettingsScreen(vms)
                     }
                 }
+            }
+        }
+
+        // ---------- 操作提示 ----------
+        // ViewModels 会在保存 / 删除 / 导入账号后写入 message，
+        // 展示两秒后自动清除，避免用户以为操作没生效。
+        val message by vms.message.collectAsState()
+        message?.let { text ->
+            LaunchedEffect(text) {
+                delay(2000)
+                vms.clearMessage()
+            }
+            Surface(
+                color = AppStyle.CardBackground,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = AppStyle.TabBarMarginBottom + 64.dp),
+            ) {
+                Text(
+                    text = text,
+                    fontSize = AppStyle.SubtitleFontSize,
+                    color = AppStyle.Accent,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                )
             }
         }
 

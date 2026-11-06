@@ -13,6 +13,8 @@ import io.modelbridge.spi.ChatChunk
 import io.modelbridge.spi.ChatRequest
 import io.modelbridge.spi.ChatResult
 import io.modelbridge.spi.ModelInfo
+import io.modelbridge.spi.Provider
+import io.modelbridge.spi.Usage
 import io.modelbridge.spi.ProviderContext
 import io.modelbridge.spi.ProviderException
 import kotlinx.coroutines.runBlocking
@@ -51,6 +53,13 @@ class Gateway(
     private val clock: () -> Long = System::currentTimeMillis,
     /** 目录超过该时长未刷新则视为过期，按需自动刷新。 */
     private val catalogStaleMillis: Long = 60_000,
+    /**
+     * 每次拿到上游用量时回调一次，用于界面统计。
+     *
+     * 放在这里而不是从 HttpResult 里取：响应体要原样透传给客户端，
+     * 不该为了统计去解析它。
+     */
+    private val onUsage: ((Usage) -> Unit)? = null,
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -226,6 +235,7 @@ class Gateway(
                 )
             },
             usage = response.usage?.let {
+                onUsage?.invoke(it)
                 WireUsage(it.promptTokens, it.completionTokens, it.totalTokens)
             },
         )
@@ -276,7 +286,10 @@ class Gateway(
                     finishReason = chunk.finishReason,
                 ),
             ),
-            usage = chunk.usage?.let { WireUsage(it.promptTokens, it.completionTokens, it.totalTokens) },
+            usage = chunk.usage?.let {
+                onUsage?.invoke(it)
+                WireUsage(it.promptTokens, it.completionTokens, it.totalTokens)
+            },
         )
 
         val payload = json.encodeToString(ChatCompletionChunk.serializer(), event)

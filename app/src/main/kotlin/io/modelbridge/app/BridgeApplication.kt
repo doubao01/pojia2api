@@ -15,6 +15,7 @@ import io.modelbridge.providers.BuiltInProviders
 import io.modelbridge.spi.HttpClient
 import io.modelbridge.spi.Provider
 import io.modelbridge.spi.ProviderContext
+import io.modelbridge.spi.Usage
 
 /**
  * 应用级状态容器。
@@ -87,6 +88,14 @@ class AppContainer(private val app: Application) {
             ?: emptySet(),
     )
 
+    /**
+     * 上游用量回调，由 [GatewayRunner] 注册。
+     *
+     * 应用层不直接持有 runner（两者生命周期不同），用回调解耦。
+     */
+    @Volatile
+    var onUsage: ((Usage) -> Unit)? = null
+
     var gateway = Gateway(
         router = router,
         catalog = catalog,
@@ -95,6 +104,7 @@ class AppContainer(private val app: Application) {
         health = health,
         contextFactory = contextFactory,
         config = buildConfig(),
+        onUsage = { onUsage?.invoke(it) },
     )
         private set
 
@@ -119,6 +129,7 @@ class AppContainer(private val app: Application) {
             health = health,
             contextFactory = contextFactory,
             config = buildConfig(),
+            onUsage = { onUsage?.invoke(it) },
         )
     }
 }
