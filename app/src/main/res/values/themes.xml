@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose 应用只需要一个基础主题，实际配色由 BridgeTheme 提供 -->
+    <style name="Theme.ModelBridge" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

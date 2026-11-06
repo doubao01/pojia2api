@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 网关凭据与配置不参与云备份与设备迁移 -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="modelbridge_accounts.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="modelbridge_accounts.xml" />
+    </device-transfer>
+</data-extraction-rules>
