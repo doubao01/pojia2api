@@ -4,33 +4,35 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import io.modelbridge.app.ui.AccountsScreen
-import io.modelbridge.app.ui.BridgeTheme
-import io.modelbridge.app.ui.LogScreen
 import io.modelbridge.app.service.ServiceManager
+import io.modelbridge.app.ui.AccountsScreen
+import io.modelbridge.app.ui.AppStyle
+import io.modelbridge.app.ui.BridgeTheme
+import io.modelbridge.app.ui.HomeScreen
+import io.modelbridge.app.ui.LogScreen
 import io.modelbridge.app.ui.ModelsScreen
+import io.modelbridge.app.ui.PillTabBar
+import io.modelbridge.app.ui.SettingsScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -43,14 +45,6 @@ class MainActivity : ComponentActivity() {
 
     private val serviceManager = ServiceManager(this)
 
-    override fun onStart() {
-        super.onStart()
-        // 每回主界面查看状态
-        if (!vms.runner.running.value) {
-            val port = vms.runner.start(0)
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -61,58 +55,94 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 主界面骨架，对照原应用「网关管家」的布局：
+ *
+ * ```
+ * ┌─────────────────────────┐
+ * │ 网关管家          26sp  │  ← 固定标题栏
+ * │ 副标题            13sp  │
+ * ├─────────────────────────┤
+ * │                         │
+ * │   内容区（可滚动）       │
+ * │                         │
+ * │   ╭─────────────────╮   │  ← 悬浮胶囊标签栏
+ * │   │首页 供应商 模型 …│   │     62dp，左右 22dp
+ * │   ╰─────────────────╯   │
+ * └─────────────────────────┘
+ * ```
+ */
 @Composable
 private fun MainScreen(vms: ViewModels) {
-    val running by vms.runner.running.collectAsState()
-    val port by vms.runner.port.collectAsState()
+    var tab by remember { mutableIntStateOf(0) }
 
-    // 底部导航状态
-    var tab by remember { mutableStateOf(Tab.Models) }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppStyle.PageBackground),
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("ModelBridge" + if (running) "  :$port" else "") },
-                actions = {
-                    androidx.compose.material3.TextButton(onClick = {
-                        if (running) vms.runner.stop() else vms.runner.start(8080)
-                    }) {
-                        Text(
-                            if (running) "停止" else "启动",
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                        )
+            // ---------- 固定标题栏 ----------
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = AppStyle.TitleBarPaddingHorizontal,
+                        end = AppStyle.TitleBarPaddingHorizontal,
+                        top = AppStyle.TitleBarPaddingTop,
+                        bottom = AppStyle.TitleBarPaddingBottom,
+                    ),
+            ) {
+                Text(
+                    text = "网关管家",
+                    fontSize = AppStyle.TitleFontSize,
+                    fontWeight = FontWeight.Bold,
+                    color = AppStyle.TitleText,
+                )
+                Text(
+                    text = "多供应商模型聚合 · OpenAI 兼容接口",
+                    fontSize = AppStyle.SubtitleFontSize,
+                    color = AppStyle.SubtitleText,
+                    modifier = Modifier.padding(top = AppStyle.SubtitlePaddingTop),
+                )
+            }
+
+            // ---------- 内容区 ----------
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            start = AppStyle.ContentPadding,
+                            end = AppStyle.ContentPadding,
+                            top = AppStyle.ContentPadding,
+                            bottom = AppStyle.ContentBottomInset,
+                        ),
+                ) {
+                    when (tab) {
+                        0 -> HomeScreen(vms)
+                        1 -> AccountsScreen(vms)
+                        2 -> ModelsScreen(vms)
+                        3 -> LogScreen(vms)
+                        else -> SettingsScreen(vms)
                     }
-                },
-            )
-        },
-        bottomBar = {
-            NavigationBar {
-                Tab.entries.forEach { item ->
-                    NavigationBarItem(
-                        selected = tab == item,
-                        onClick = { tab = item },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                    )
                 }
             }
-        },
-    ) { inner ->
-        androidx.compose.foundation.layout.Box(
-            modifier = Modifier.padding(inner),
-        ) {
-            when (tab) {
-                Tab.Models -> ModelsScreen(vms)
-                Tab.Accounts -> AccountsScreen(vms)
-                Tab.Log -> LogScreen(vms)
-            }
         }
+
+        // ---------- 悬浮标签栏 ----------
+        PillTabBar(
+            tabs = TABS,
+            selectedIndex = tab,
+            onSelect = { tab = it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = AppStyle.TabBarMarginBottom),
+        )
     }
 }
 
-private enum class Tab(val label: String, val icon: ImageVector) {
-    Models("模型", Icons.Filled.Memory),
-    Accounts("账号", Icons.Filled.Settings),
-    Log("日志", Icons.Filled.List),
-}
+/** 标签顺序与原版一致：首页 / 供应商 / 模型 / 日志 / 我的。 */
+private val TABS = listOf("首页", "供应商", "模型", "日志", "我的")
