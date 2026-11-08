@@ -1,8 +1,10 @@
 package io.modelbridge.app
 
+import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.modelbridge.app.prefs.GatewaySettings
+import io.modelbridge.app.service.FloatingBallService
 import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
@@ -183,8 +185,43 @@ class ViewModels(
     // ---------- 设置 ----------
 
     fun updateSettings(block: (GatewaySettings) -> GatewaySettings) {
+        val before = container.settings.current()
         container.settings.edit(block)
         container.applySettings()
+        val after = container.settings.current()
+        // 悬浮球不是纯数据：开关或尺寸一变就要真的显示/隐藏
+        if (before.showFloatingBall != after.showFloatingBall ||
+            before.floatingBallSizeDp != after.floatingBallSizeDp
+        ) {
+            syncFloatingBall(after.showFloatingBall)
+        }
+    }
+
+    /**
+     * 按当前设置显示或隐藏悬浮球。
+     *
+     * 悬浮窗权限被拒绝时保持关闭并提示，避免球显示不出来又不给原因。
+     */
+    fun syncFloatingBall(show: Boolean) {
+        if (!show) {
+            FloatingBallService.apply(container.context, false)
+            return
+        }
+        if (!Settings.canDrawOverlays(container.context)) {
+            // 直接把用户送到授权页，比只弹一句提示有用
+            runCatching {
+                container.context.startActivity(
+                    android.content.Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:" + container.context.packageName),
+                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }.onFailure {
+                toast("需要「显示在其他应用上层」权限才能显示悬浮球")
+            }
+            return
+        }
+        FloatingBallService.apply(container.context, true)
     }
 
     fun resetSettings() {

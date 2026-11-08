@@ -109,10 +109,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        val settings = app.container.settings.current()
         // 若开启了开机自启且网关没跑，进入界面时拉起
-        if (app.container.settings.current().autoStart && !vms.runner.running.value) {
+        if (settings.autoStart && !vms.runner.running.value) {
             vms.runner.start()
         }
+        // 悬浮球是独立服务，进程重建后要按设置恢复
+        vms.syncFloatingBall(settings.showFloatingBall)
+    }
+
+    /** 悬浮窗权限被拒后回到界面时补一次同步。 */
+    override fun onResume() {
+        super.onResume()
+        val settings = app.container.settings.current()
+        if (settings.showFloatingBall) vms.syncFloatingBall(true)
     }
 }
 

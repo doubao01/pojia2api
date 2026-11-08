@@ -43,6 +43,9 @@ class BridgeApplication : Application() {
  */
 class AppContainer(private val app: Application) {
 
+    /** 应用级 Context，供需要 Context 的辅助组件使用。 */
+    val context: Application get() = app
+
     val httpClient: HttpClient = JvmHttpClient()
 
     /** 供应商注册表，内置 14 家。 */
