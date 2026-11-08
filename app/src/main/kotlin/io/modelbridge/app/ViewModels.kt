@@ -42,8 +42,12 @@ class ViewModels(
      * 走后台服务而非直接调 runner：Android 会回收后台进程，
      * 网关被回收后手机上的客户端就连不上了。
      */
-    fun startGateway(port: Int = 8080) {
-        serviceManager.start(port)
+    fun startGateway(port: Int = container.settings.current().port) {
+        try {
+            serviceManager.start(port)
+        } catch (error: RuntimeException) {
+            toast("无法启动前台服务，请保持应用在前台后重试")
+        }
     }
 
     /** 停止网关。 */
@@ -193,7 +197,10 @@ class ViewModels(
         if (before.showFloatingBall != after.showFloatingBall ||
             before.floatingBallSizeDp != after.floatingBallSizeDp
         ) {
-            syncFloatingBall(after.showFloatingBall)
+            syncFloatingBall(
+                after.showFloatingBall,
+                requestPermission = after.showFloatingBall && !before.showFloatingBall,
+            )
         }
     }
 
@@ -202,22 +209,24 @@ class ViewModels(
      *
      * 悬浮窗权限被拒绝时保持关闭并提示，避免球显示不出来又不给原因。
      */
-    fun syncFloatingBall(show: Boolean) {
+    fun syncFloatingBall(show: Boolean, requestPermission: Boolean = false) {
         if (!show) {
             FloatingBallService.apply(container.context, false)
             return
         }
         if (!Settings.canDrawOverlays(container.context)) {
-            // 直接把用户送到授权页，比只弹一句提示有用
-            runCatching {
-                container.context.startActivity(
-                    android.content.Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        android.net.Uri.parse("package:" + container.context.packageName),
-                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }.onFailure {
-                toast("需要「显示在其他应用上层」权限才能显示悬浮球")
+            // 恢复界面、返回授权页时不重复弹窗；只响应开关的主动操作。
+            if (requestPermission) {
+                runCatching {
+                    container.context.startActivity(
+                        android.content.Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:" + container.context.packageName),
+                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }.onFailure {
+                    toast("需要「显示在其他应用上层」权限才能显示悬浮球")
+                }
             }
             return
         }

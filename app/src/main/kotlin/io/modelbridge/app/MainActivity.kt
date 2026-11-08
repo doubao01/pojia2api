@@ -52,15 +52,9 @@ class MainActivity : ComponentActivity() {
     private val vms: ViewModels by viewModels {
         viewModelFactory {
             initializer {
-                val runner = GatewayRunner(
-                    gatewayProvider = { app.container.gateway },
-                    settings = app.container.settings,
-                )
-                // 把上游用量接进访问日志，首页才能显示真实的 token 与命中率
-                app.container.onUsage = runner::reportUsage
                 ViewModels(
                     container = app.container,
-                    runner = runner,
+                    runner = app.container.runner,
                     serviceManager = ServiceManager(applicationContext),
                 )
             }
@@ -112,9 +106,9 @@ class MainActivity : ComponentActivity() {
         val settings = app.container.settings.current()
         // 若开启了开机自启且网关没跑，进入界面时拉起
         if (settings.autoStart && !vms.runner.running.value) {
-            vms.runner.start()
+            vms.startGateway(settings.port)
         }
-        // 悬浮球是独立服务，进程重建后要按设置恢复
+        // 只恢复已授权的悬浮球，不在生命周期回调里主动弹权限页。
         vms.syncFloatingBall(settings.showFloatingBall)
     }
 

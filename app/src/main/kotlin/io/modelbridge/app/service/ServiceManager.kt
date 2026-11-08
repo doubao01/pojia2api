@@ -25,11 +25,8 @@ class ServiceManager(private val context: Context) {
         }
     }
 
-    /** 停止。 */
+    /** 停止服务会同步释放应用唯一监听器；不额外创建一个新服务。 */
     fun stop() {
-        val intent = Intent(context, GatewayService::class.java).apply {
-            action = ACTION_STOP
-        }
-        context.startService(intent)
+        context.stopService(Intent(context, GatewayService::class.java))
     }
 }

@@ -123,6 +123,16 @@ class AppContainer(private val app: Application) {
         private set
 
     /**
+     * 进程内唯一运行控制器；Activity 重建、服务启动与日志页都使用这一份。
+     * 不能让 Activity 和 Service 各创建一个监听器，否则首页永远看不到服务状态。
+     */
+    val runner: GatewayRunner by lazy {
+        GatewayRunner(gatewayProvider = { gateway }, settings = settings).also {
+            onUsage = it::reportUsage
+        }
+    }
+
+    /**
      * 设置变更后重建受影响的组件。
      *
      * 健康阈值与鉴权密钥是构造期注入的，改完必须重建；

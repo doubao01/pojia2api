@@ -1,208 +1,99 @@
 package io.modelbridge.app.service
 
 import android.app.NotificationChannel
-import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Binder
 import android.os.IBinder
+import androidx.core.app.NotificationCompat
 import io.modelbridge.app.BridgeApplication
 import io.modelbridge.app.GatewayRunner
 import io.modelbridge.app.MainActivity
-import io.modelbridge.app.prefs.SettingsStore
-import io.modelbridge.core.Gateway
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
-/**
- * 前台服务：让网关在手机切到后台后仍然继续运行。
- *
- * 通知常驻于状态栏，点击可回到主界面。
- */
+/** 前台服务只管理生命周期；监听器、日志、端口状态由应用唯一实例持有。 */
 class GatewayService : Service() {
+    private val app: BridgeApplication get() = application as BridgeApplication
+    private val runner: GatewayRunner get() = app.container.runner
 
-    private var runner: GatewayRunner? = null
+    override fun onBind(intent: Intent?): IBinder? = null
 
-    private val _port = MutableStateFlow<Int?>(null)
-    val port: StateFlow<Int?> = _port.asStateFlow()
-
-    /** 网关运行状态。 */
-    val running: StateFlow<Boolean> get() = _running
-
-    private val _running = MutableStateFlow<Boolean>(false)
-
-    /** 设置存储，在 initialize() 里指定。 */
-    private var settings: SettingsStore? = null
-
-    /** 先绑定的网关，在 initialize() 里指定。 */
-    private var gateway: Gateway? = null
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    /** 通知 ID。 */
-    private val notificationId = 10001
-
-    /** 通知通道 ID。 */
-    private val channelId = "modelbridge_gateway"
-
-    override fun onBind(intent: Intent?): IBinder = serviceBinder
-
-    /**
-     * 处理启动 / 停止指令。
-     *
-     * 每次被调用都要先转前台：Android 要求 startForegroundService 之后
-     * 5 秒内调用 startForeground，否则会抛异常。
-     */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action
-        val app = application as? BridgeApplication
-
-        // 服务可能在进程重启后被系统重新拉起，此时还没注入过依赖
-        if (runner == null && app != null) {
-            initialize({ app.container.gateway }, app.container.settings)
-        }
-
-        sendNotification()
-
-        when (action) {
+        when (intent?.action) {
             ACTION_START -> {
-                val port = intent.getIntExtra(INTENT_PORT, DEFAULT_PORT)
-                start(port)
+                // 重复启动仍须先转前台，不能因已运行就省略这一步。
+                showNotification("正在启动网关")
+                val port = if (intent.hasExtra(INTENT_PORT)) {
+                    intent.getIntExtra(INTENT_PORT, DEFAULT_PORT)
+                } else {
+                    app.container.settings.current().port
+                }
+                val actualPort = runner.start(port)
+                if (actualPort > 0) {
+                    showNotification("已启动，监听端口 $actualPort")
+                } else {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
             }
-            ACTION_STOP -> stopGateway()
-            else -> Unit
+            ACTION_STOP -> {
+                runner.stop()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+            else -> {
+                // 不因空 Intent 自动启动；用户停止后也不重建监听。
+                if (runner.running.value) {
+                    showNotification("已启动，监听端口 ${runner.port.value}")
+                } else {
+                    stopSelf()
+                }
+            }
         }
-
-        // 被系统杀掉后不要自动重建：由用户显式启动更可控
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
-        scope.launch { runCatching { runner?.stop() } }
+        // 必须同步释放监听；不能启动一个可能永远不执行的销毁协程。
+        runner.stop()
         super.onDestroy()
     }
 
-    private val serviceBinder = GatewayServiceBinder()
-
-    inner class GatewayServiceBinder : Binder() {
-        fun getService(): GatewayService = this@GatewayService
-    }
-
-    /**
-     * 把网关与 Service 关联，并创建前台通知。
-     *
-     * 后续所有调用都通过 [start] / [stopGateway]。
-     */
-    fun initialize(gatewayProvider: () -> Gateway, settings: SettingsStore) {
-        this.gateway = gatewayProvider()
-        this.settings = settings
-        // 传入提供者而非实例：设置变更后应用会重建 Gateway，
-        // 启动时再取值才能拿到最新的那个。
-        runner = GatewayRunner(gatewayProvider, settings)
-        sendNotification()
-    }
-
-    /**
-     * 开始监听端口。
-     */
-    fun start(port: Int = DEFAULT_PORT) {
-        val gateway = gateway ?: return
-        val runner = runner ?: return
-
-        scope.launch {
-            runCatching {
-                val actualPort = runner.start(port)
-                if (actualPort > 0) {
-                    _port.value = actualPort
-                    _running.value = true
-                    updateNotification(true, actualPort)
-                } else {
-                    _port.value = null
-                    _running.value = false
-                    updateNotification(false, 0)
-                }
-            }
+    private fun showNotification(message: String) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "网关服务通知", NotificationManager.IMPORTANCE_LOW),
+            )
         }
-    }
-
-    /**
-     * 停止并提供的更新。
-     */
-    fun stopGateway() {
-        runner?.stop()
-        runner = null
-        _port.value = null
-        _running.value = false
-        updateNotification(false, 0)
-        stopForeground(true)
-    }
-
-    private fun sendNotification() {
-        createNotificationChannel()
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("ModelBridge 网关")
-            .setContentText("未运行")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(pendingIntent())
-            .build()
-        startForeground(notificationId, notification)
-    }
-
-    private fun updateNotification(running: Boolean, port: Int) {
-        val builder = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("ModelBridge 网关")
-            .setContentText(if (running) "已启动，监听端口 $port" else "未运行")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(pendingIntent())
-        val notification = builder.build()
-        startForeground(notificationId, notification)
-    }
-
-    /**
-     * 创建跳转到主界面的 Intent，PendingIntent 不算数据，只负责点击。
-     */
-    private fun pendingIntent(): PendingIntent {
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+        val open = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        return PendingIntent.getActivity(
-            applicationContext,
-            0,
-            intent,
-            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val stop = Intent(this, GatewayService::class.java).apply { action = ACTION_STOP }
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("ModelBridge 网关")
+            .setContentText(message)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(PendingIntent.getActivity(
+                this, 0, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            ))
+            .addAction(android.R.drawable.ic_media_pause, "停止", PendingIntent.getService(
+                this, 1, stop, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            ))
+            .setOngoing(true)
+            .build()
+        startForeground(NOTIFICATION_ID, notification)
     }
 
-    private fun createNotificationChannel() {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // 没有该通道就新建一个。
-        if (manager.getNotificationChannel(channelId) == null) {
-            val channel = NotificationChannel(channelId, "网关服务通知", NotificationManager.IMPORTANCE_LOW).apply {
-                this.importance = NotificationManager.IMPORTANCE_LOW
-            }
-            manager.createNotificationChannel(channel)
-        }
+    private companion object {
+        const val NOTIFICATION_ID = 10001
+        const val CHANNEL_ID = "modelbridge_gateway"
     }
 }
 
-/** 默认监听端口。 */
 const val DEFAULT_PORT = 8080
-
-/** 启动指令。 */
 const val ACTION_START = "io.modelbridge.action.START"
-
-/** 停止指令。 */
 const val ACTION_STOP = "io.modelbridge.action.STOP"
-
-/** 端口参数名。 */
 const val INTENT_PORT = "io.modelbridge.port"
