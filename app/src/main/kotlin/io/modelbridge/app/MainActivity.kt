@@ -38,6 +38,7 @@ import io.modelbridge.app.ui.ModelsScreen
 import io.modelbridge.app.ui.PillTabBar
 import io.modelbridge.app.ui.PolicyScreen
 import io.modelbridge.app.ui.SettingsScreen
+import io.modelbridge.app.ui.TaskQuotaScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -141,7 +142,11 @@ class MainActivity : ComponentActivity() {
 private fun MainScreen(vms: ViewModels) {
     var tab by remember { mutableIntStateOf(0) }
     var showPolicies by remember { androidx.compose.runtime.mutableStateOf(false) }
-    BackHandler(enabled = showPolicies) { showPolicies = false }
+    var showTasks by remember { androidx.compose.runtime.mutableStateOf(false) }
+    BackHandler(enabled = showPolicies || showTasks) {
+        showPolicies = false
+        showTasks = false
+    }
 
     Box(
         modifier = Modifier
@@ -190,12 +195,15 @@ private fun MainScreen(vms: ViewModels) {
                 ) {
                     if (showPolicies) {
                         PolicyScreen(vms, onBack = { showPolicies = false })
+                    } else if (showTasks) {
+                        TaskQuotaScreen(vms, onBack = { showTasks = false })
                     } else {
                         when (tab) {
                             0 -> HomeScreen(
                                 vms,
-                                onOpenAccounts = { tab = 1 },
-                                onOpenPolicies = { showPolicies = true },
+                                onOpenAccounts = { showTasks = false; tab = 1 },
+                                onOpenPolicies = { showTasks = false; showPolicies = true },
+                                onOpenTasks = { showPolicies = false; showTasks = true },
                             )
                             1 -> AccountsScreen(vms)
                             2 -> ModelsScreen(vms)
@@ -236,7 +244,7 @@ private fun MainScreen(vms: ViewModels) {
         PillTabBar(
             tabs = TABS,
             selectedIndex = tab,
-            onSelect = { showPolicies = false; tab = it },
+            onSelect = { showPolicies = false; showTasks = false; tab = it },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = AppStyle.TabBarMarginBottom),

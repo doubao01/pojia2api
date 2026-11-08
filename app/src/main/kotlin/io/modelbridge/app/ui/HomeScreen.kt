@@ -46,6 +46,7 @@ fun HomeScreen(
     vms: ViewModels,
     onOpenAccounts: () -> Unit = {},
     onOpenPolicies: () -> Unit = {},
+    onOpenTasks: () -> Unit = {},
 ) {
     val running by vms.runner.running.collectAsState()
     val port by vms.runner.port.collectAsState()
@@ -139,7 +140,7 @@ fun HomeScreen(
             ActionRow(
                 label = "任务管理",
                 hint = if (running) "签到、任务、额度" else "先启动网关",
-                onClick = onOpenAccounts,
+                onClick = onOpenTasks,
             )
             RowDivider()
             ActionRow(
