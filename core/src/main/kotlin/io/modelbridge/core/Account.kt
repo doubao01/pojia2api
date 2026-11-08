@@ -30,6 +30,8 @@ data class Account(
     val priority: Int = 0,
     /** 该账号下被禁用的模型 ID，用于精细控制。 */
     val disabledModels: Set<String> = emptySet(),
+    /** 固定绑定策略；null 按模型自动匹配，停用或已删除的策略不注入。 */
+    val fixedPolicyId: String? = null,
 ) {
     init {
         require(id.isNotBlank()) { "账号 id 不能为空" }

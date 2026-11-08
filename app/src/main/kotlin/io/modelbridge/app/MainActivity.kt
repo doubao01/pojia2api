@@ -36,7 +36,9 @@ import io.modelbridge.app.ui.HomeScreen
 import io.modelbridge.app.ui.LogScreen
 import io.modelbridge.app.ui.ModelsScreen
 import io.modelbridge.app.ui.PillTabBar
+import io.modelbridge.app.ui.PolicyScreen
 import io.modelbridge.app.ui.SettingsScreen
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.unit.dp
@@ -134,6 +136,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MainScreen(vms: ViewModels) {
     var tab by remember { mutableIntStateOf(0) }
+    var showPolicies by remember { androidx.compose.runtime.mutableStateOf(false) }
+    BackHandler(enabled = showPolicies) { showPolicies = false }
 
     Box(
         modifier = Modifier
@@ -180,12 +184,20 @@ private fun MainScreen(vms: ViewModels) {
                             bottom = AppStyle.ContentBottomInset,
                         ),
                 ) {
-                    when (tab) {
-                        0 -> HomeScreen(vms, onOpenAccounts = { tab = 1 })
-                        1 -> AccountsScreen(vms)
-                        2 -> ModelsScreen(vms)
-                        3 -> LogScreen(vms)
-                        else -> SettingsScreen(vms)
+                    if (showPolicies) {
+                        PolicyScreen(vms, onBack = { showPolicies = false })
+                    } else {
+                        when (tab) {
+                            0 -> HomeScreen(
+                                vms,
+                                onOpenAccounts = { tab = 1 },
+                                onOpenPolicies = { showPolicies = true },
+                            )
+                            1 -> AccountsScreen(vms)
+                            2 -> ModelsScreen(vms)
+                            3 -> LogScreen(vms)
+                            else -> SettingsScreen(vms)
+                        }
                     }
                 }
             }
@@ -220,7 +232,7 @@ private fun MainScreen(vms: ViewModels) {
         PillTabBar(
             tabs = TABS,
             selectedIndex = tab,
-            onSelect = { tab = it },
+            onSelect = { showPolicies = false; tab = it },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = AppStyle.TabBarMarginBottom),

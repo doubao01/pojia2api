@@ -224,6 +224,7 @@ private fun ProviderCard(
                         onCheck = { vms.checkAccount(acc) },
                         onEdit = { onEdit(acc) },
                         onDelete = { vms.deleteAccount(acc.id) },
+                        vms = vms,
                     )
                 }
             }
@@ -265,8 +266,11 @@ private fun AccountRow(
     onCheck: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    vms: ViewModels,
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
+    var selectPolicy by remember { mutableStateOf(false) }
+    val policies by vms.policies.collectAsState()
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
         Row(
@@ -301,10 +305,40 @@ private fun AccountRow(
         Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             TextButton(onClick = onCheck) { Text("检测", fontSize = 12.sp) }
             TextButton(onClick = onEdit) { Text("编辑", fontSize = 12.sp) }
+            TextButton(onClick = { selectPolicy = true }) { Text("策略", fontSize = 12.sp) }
             TextButton(onClick = { confirmDelete = true }) {
                 Text("删除", fontSize = 12.sp, color = AppStyle.Accent)
             }
         }
+        val bound = policies.firstOrNull { it.id == account.fixedPolicyId }
+        if (account.fixedPolicyId != null) {
+            Text(
+                "固定策略：${bound?.name ?: "已删除"}" + if (bound?.enabled == false) " · 已停用" else "",
+                fontSize = 11.sp,
+                color = AppStyle.SubtitleText,
+            )
+        }
+    }
+
+    if (selectPolicy) {
+        AlertDialog(
+            onDismissRequest = { selectPolicy = false },
+            title = { Text("固定策略") },
+            text = {
+                Column {
+                    TextButton(onClick = { vms.bindPolicy(account.id, null); selectPolicy = false }) {
+                        Text("不固定，按模型自动匹配")
+                    }
+                    policies.forEach { policy ->
+                        TextButton(onClick = { vms.bindPolicy(account.id, policy.id); selectPolicy = false }) {
+                            Text(policy.name + if (policy.enabled) "" else " · 已停用")
+                        }
+                    }
+                    if (policies.isEmpty()) Text("先到首页「策略管理」新建策略")
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectPolicy = false }) { Text("取消") } },
+        )
     }
 
     if (confirmDelete) {

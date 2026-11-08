@@ -158,6 +158,7 @@ fun SettingsScreen(vms: ViewModels) {
                     pendingMessage = transfer.exportConfig(
                         settings = vms.settings.value,
                         accounts = vms.accounts.value,
+                        policies = vms.policies.value,
                     )
                 },
             )
@@ -169,6 +170,7 @@ fun SettingsScreen(vms: ViewModels) {
                     pendingMessage = transfer.importConfig { cfg ->
                         cfg.settings?.let { s -> vms.updateSettings { s } }
                         cfg.accounts?.let { vms.importAccounts(it, replace = true) }
+                        cfg.policies?.let(vms::importPolicies)
                     }
                 },
             )
@@ -200,7 +202,7 @@ fun SettingsScreen(vms: ViewModels) {
             RowDivider()
             InfoRow("版本", "1.0.0")
             RowDivider()
-            InfoRow("作者", ABOUT_AUTHOR, mono = false)
+            InfoRow("原项目作者", ABOUT_AUTHOR, mono = false)
             RowDivider()
             InfoRow("许可证", "Apache-2.0")
         }

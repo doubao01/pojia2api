@@ -172,8 +172,14 @@ object PolicyInjector {
         obj: JsonObject,
         instruction: String,
     ): InjectionResult {
-        val existing = (obj["instructions"] as? JsonPrimitive)
-            ?.contentOrNull
+        val original = obj["instructions"]
+        if (original != null && original !is JsonPrimitive) {
+            return InjectionResult.Failed("instructions 不是文本，保留原请求")
+        }
+        if (original is JsonPrimitive && !original.isString && original != kotlinx.serialization.json.JsonNull) {
+            return InjectionResult.Failed("instructions 不是文本，保留原请求")
+        }
+        val existing = (original as? JsonPrimitive)?.contentOrNull
             ?.takeIf { it.isNotBlank() }
 
         // 已有 instructions 时前置，保留客户端原内容
@@ -190,17 +196,21 @@ object PolicyInjector {
         obj: JsonObject,
         instruction: String,
     ): InjectionResult {
-        val existing = when (val s = obj["system"]) {
-            is JsonPrimitive -> s.contentOrNull
-            is JsonArray -> null // 复杂结构不覆盖
-            else -> null
-        }?.takeIf { it.isNotBlank() }
+        val existing = obj["system"]
+        val merged = when {
+            existing == null || existing == kotlinx.serialization.json.JsonNull -> JsonPrimitive(instruction)
+            existing is JsonPrimitive && existing.isString -> {
+                val text = existing.content
+                JsonPrimitive(if (text.isBlank()) instruction else "$instruction\n\n$text")
+            }
+            existing is JsonArray -> {
+                val block = JsonObject(mapOf("type" to JsonPrimitive("text"), "text" to JsonPrimitive(instruction)))
+                JsonArray(listOf(block) + existing)
+            }
+            else -> return InjectionResult.Failed("system 不是文本或内容数组，保留原请求")
+        }
 
-        val value = if (existing != null) "$instruction\n\n$existing" else instruction
-
-        val out = JsonObject(
-            obj + ("system" to JsonPrimitive(value)),
-        )
+        val out = JsonObject(obj + ("system" to merged))
         return InjectionResult.Applied(out.toString(), "")
     }
 }

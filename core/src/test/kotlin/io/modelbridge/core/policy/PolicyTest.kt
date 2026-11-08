@@ -208,6 +208,32 @@ class PolicyTest {
     }
 
     @Test
+    fun `messages 注入保留客户端 system 内容块与缓存标记`() {
+        val body = """{"system":[{"type":"text","text":"client","cache_control":{"type":"ephemeral"}}],"messages":[]}"""
+        val before = Json.parseToJsonElement(body).jsonObject
+        val result = PolicyInjector.inject(body, "policy", InjectionProtocol.Messages) as InjectionResult.Applied
+        val after = Json.parseToJsonElement(result.body).jsonObject
+        val system = after.getValue("system").jsonArray
+        assertEquals(2, system.size)
+        assertEquals("policy", system[0].jsonObject.getValue("text").jsonPrimitive.content)
+        assertEquals(before.getValue("system").jsonArray[0], system[1])
+        assertEquals(before.getValue("messages"), after.getValue("messages"))
+    }
+
+    @Test
+    fun `responses 不支持的 instructions 结构不得覆盖`() {
+        val result = PolicyInjector.inject("""{"instructions":["client"],"input":"hello"}""", "policy", InjectionProtocol.Responses)
+        assertTrue(result is InjectionResult.Failed)
+    }
+
+    @Test
+    fun `固定绑定停用策略时不回落到通用策略`() {
+        val disabled = policy("fixed", enabled = false)
+        val fallback = policy("general")
+        assertNull(PolicyMatcher.match(listOf(disabled, fallback), listOf("m"), "fixed"))
+    }
+
+    @Test
     fun `普通策略可以删除`() {
         val store = InMemoryPolicyStore(listOf(policy("custom")))
         store.delete("custom")

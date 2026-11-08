@@ -42,7 +42,11 @@ import io.modelbridge.app.ViewModels
  * 重启后清零；接入地址与密钥沿用原版的语义。
  */
 @Composable
-fun HomeScreen(vms: ViewModels, onOpenAccounts: () -> Unit = {}) {
+fun HomeScreen(
+    vms: ViewModels,
+    onOpenAccounts: () -> Unit = {},
+    onOpenPolicies: () -> Unit = {},
+) {
     val running by vms.runner.running.collectAsState()
     val port by vms.runner.port.collectAsState()
     val entries by vms.runner.log.collectAsState()
@@ -140,8 +144,8 @@ fun HomeScreen(vms: ViewModels, onOpenAccounts: () -> Unit = {}) {
             RowDivider()
             ActionRow(
                 label = "策略管理",
-                hint = "按模型注入正文，暂未实现",
-                onClick = { Toast.makeText(context, "策略库尚未实现", Toast.LENGTH_SHORT).show() },
+                hint = "按模型注入正文，转发时前置到请求里",
+                onClick = onOpenPolicies,
             )
         }
     }

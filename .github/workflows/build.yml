@@ -34,7 +34,7 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: 运行单元测试
-        run: ./gradlew :core:test --no-daemon
+        run: ./gradlew :core:test :providers:test --no-daemon
 
       - name: 上传测试报告
         if: always()

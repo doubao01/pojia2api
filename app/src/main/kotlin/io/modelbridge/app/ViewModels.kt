@@ -80,6 +80,74 @@ class ViewModels(
     /** 访问日志。 */
     val log: StateFlow<List<LogEntry>> = runner.log
 
+    val policies: StateFlow<List<io.modelbridge.core.policy.Policy>> =
+        container.policyStore.policiesFlow
+
+    fun savePolicy(policy: io.modelbridge.core.policy.Policy, onSaved: () -> Unit) {
+        if (policy.name.isBlank()) {
+            toast("填个名称")
+            return
+        }
+        if (policy.instruction.isBlank()) {
+            toast("策略正文不能为空")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { container.policyStore.upsert(policy) }
+                toast("策略已保存")
+                onSaved()
+            } catch (error: Exception) {
+                toast("策略无法保存")
+            }
+        }
+    }
+
+    fun togglePolicy(policy: io.modelbridge.core.policy.Policy, enabled: Boolean) {
+        savePolicy(policy.copy(enabled = enabled)) {}
+    }
+
+    fun deletePolicy(policy: io.modelbridge.core.policy.Policy, onDeleted: () -> Unit = {}) {
+        if (policy.builtin) {
+            toast("内置策略不可删除")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { container.policyStore.delete(policy.id) }
+                toast("策略已删除")
+                onDeleted()
+            } catch (error: Exception) {
+                toast("策略无法删除")
+            }
+        }
+    }
+
+    fun importPolicies(list: List<io.modelbridge.core.policy.Policy>) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { container.policyStore.replaceAll(list) }
+                toast("已导入 ${list.size} 条策略")
+            } catch (error: Exception) {
+                toast("策略无法导入，原存档已保留")
+            }
+        }
+    }
+
+    fun bindPolicy(accountId: String, policyId: String?) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val account = container.accountStore.find(accountId) ?: error("账号不存在")
+                    container.accountStore.upsert(account.copy(fixedPolicyId = policyId))
+                }
+                toast("策略绑定已更新")
+            } catch (error: Exception) {
+                toast("策略绑定无法保存")
+            }
+        }
+    }
+
     /** 连通性检测结果，按账号 id 索引。 */
     private val _checks = MutableStateFlow<Map<String, String>>(emptyMap())
     val checks: StateFlow<Map<String, String>> = _checks.asStateFlow()
@@ -171,6 +239,7 @@ class ViewModels(
                 baseUrl = baseUrl.ifBlank { existing?.baseUrl ?: "" },
                 priority = existing?.priority ?: 0,
                 disabledModels = existing?.disabledModels ?: emptySet(),
+                fixedPolicyId = existing?.fixedPolicyId,
             )
             container.accountStore.upsert(account)
             refreshModels()
@@ -189,13 +258,14 @@ class ViewModels(
 
     /** 批量导入账号（用于「导入账号」与「导入配置」）。 */
     fun importAccounts(list: List<Account>, replace: Boolean = false) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (replace) {
-                container.accountStore.all().forEach { container.accountStore.delete(it.id) }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { container.accountStore.importAll(list, replace) }
+                refreshModels()
+                toast("已导入 ${list.size} 个账号")
+            } catch (error: Exception) {
+                toast("账号无法导入，原存档已保留")
             }
-            list.forEach { container.accountStore.upsert(it) }
-            refreshModels()
-            _message.value = "已导入 ${list.size} 个账号"
         }
     }
 

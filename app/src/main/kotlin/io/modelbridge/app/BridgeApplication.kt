@@ -2,6 +2,7 @@ package io.modelbridge.app
 
 import android.app.Application
 import io.modelbridge.app.prefs.AccountPreferences
+import io.modelbridge.app.prefs.PrefsPolicyStore
 import io.modelbridge.app.prefs.SettingsStore
 import io.modelbridge.core.AccountStore
 import io.modelbridge.core.Gateway
@@ -53,7 +54,10 @@ class AppContainer(private val app: Application) {
     val settings = SettingsStore(app)
 
     /** 账号仓储，持久化在 SharedPreferences，重启不丢。 */
-    val accountStore: AccountStore = AccountPreferences(app)
+    val accountStore = AccountPreferences(app)
+
+    /** 策略仓储，持久化在 SharedPreferences，重启不丢。 */
+    val policyStore = PrefsPolicyStore(app)
 
     /**
      * 健康追踪。阈值取自设置，修改后需重建容器或调用 [applySettings]。
@@ -105,6 +109,7 @@ class AppContainer(private val app: Application) {
         contextFactory = contextFactory,
         config = buildConfig(),
         onUsage = { onUsage?.invoke(it) },
+        policyStore = policyStore,
     )
         private set
 
@@ -130,6 +135,7 @@ class AppContainer(private val app: Application) {
             contextFactory = contextFactory,
             config = buildConfig(),
             onUsage = { onUsage?.invoke(it) },
+            policyStore = policyStore,
         )
     }
 }

@@ -1,5 +1,8 @@
 package io.modelbridge.spi
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
 /**
  * 一次已认证的调用上下文。
  *
@@ -17,18 +20,23 @@ interface ProviderContext {
     val baseUrl: String
 }
 
-/** 供应商凭据。 */
+/** 供应商凭据。保存格式使用稳定类型名，避免类重构破坏存档。 */
+@Serializable
 sealed interface Credential {
-    /** 无凭据。 */
+    @Serializable
+    @SerialName("none")
     data object None : Credential
 
-    /** 单一密钥。 */
+    @Serializable
+    @SerialName("api_key")
     data class ApiKey(val key: String) : Credential
 
-    /** Cookie 串，形如 `a=1; b=2`。 */
+    @Serializable
+    @SerialName("cookies")
     data class Cookies(val raw: String) : Credential
 
-    /** OAuth 令牌。 */
+    @Serializable
+    @SerialName("oauth")
     data class OAuth(
         val accessToken: String,
         val refreshToken: String? = null,
@@ -36,7 +44,8 @@ sealed interface Credential {
         val tokenType: String = "Bearer",
     ) : Credential
 
-    /** 手机号登录产出的会话令牌。 */
+    @Serializable
+    @SerialName("session")
     data class Session(val phone: String, val token: String) : Credential
 }
 

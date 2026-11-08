@@ -189,13 +189,14 @@ class Gateway(
      *
      * @return 注入后的请求；没有策略或注入失败返回 null
      */
-    private fun applyPolicy(modelId: String, rawBody: String): Pair<ChatRequest, Policy>? {
+    private fun applyPolicy(modelId: String, rawBody: String, fixedPolicyId: String? = null): Pair<ChatRequest, Policy>? {
         val policies = policyStore?.all() ?: return null
         if (policies.isEmpty()) return null
 
         val matched = PolicyMatcher.match(
             policies = policies,
             candidateModelIds = listOf(modelId),
+            fixedPolicyId = fixedPolicyId,
         ) ?: return null
 
         if (matched.instruction.isBlank()) return null
@@ -243,22 +244,18 @@ class Gateway(
         }
 
         val modelId = wire.model.removePrefix(config.publicModelPrefix)
-        var internal = Mapper.toChatRequest(wire).copy(model = modelId)
-
-        // 策略注入：按模型匹配一条策略，把正文前置进请求。
-        // 与原版一致——一次请求最多一条策略，失败不影响转发。
-        policyName = null
-        applyPolicy(modelId, rawBody)?.let { (injected, policy) ->
-            internal = injected
-            policyName = policy.name
-        }
-
+        val original = Mapper.toChatRequest(wire).copy(model = modelId)
         val targets = router.resolve(modelId)
         val failures = mutableListOf<String>()
 
-        // 依次尝试候选账号，实现故障转移
+        policyName = null
+        lastPolicyError = null
+        // 每次从原始请求体注入，故障转移不叠加前一个账号的策略。
         for (target in targets) {
             try {
+                val applied = applyPolicy(target.model.id, rawBody, target.account.fixedPolicyId)
+                val internal = applied?.first ?: original
+                policyName = applied?.second?.name
                 val context = contextFactory(target.provider, target.account)
                 val result = target.provider.chat(context, internal)
                 health.recordSuccess(target.account.id)

@@ -15,6 +15,7 @@ interface PolicyStore {
     fun find(id: String): Policy?
     fun upsert(policy: Policy)
     fun delete(id: String)
+    fun replaceAll(policies: List<Policy>)
 
     val policiesFlow: StateFlow<List<Policy>>
 }
@@ -49,6 +50,16 @@ class InMemoryPolicyStore(initial: List<Policy> = emptyList()) : PolicyStore {
             map.remove(id)
         }
         emit()
+    }
+
+    override fun replaceAll(policies: List<Policy>) {
+        synchronized(lock) {
+            val builtin = map.values.filter { it.builtin }
+            map.clear()
+            policies.forEach { map[it.id] = it }
+            builtin.forEach { map[it.id] = it }
+            emit()
+        }
     }
 
     private fun emit() {

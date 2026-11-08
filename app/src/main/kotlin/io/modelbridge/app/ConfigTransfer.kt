@@ -26,11 +26,16 @@ class ConfigTransfer(private val context: Context) {
      *
      * @return 给界面显示的一句话结果
      */
-    fun exportConfig(settings: GatewaySettings, accounts: List<Account>): String {
+    fun exportConfig(
+        settings: GatewaySettings,
+        accounts: List<Account>,
+        policies: List<io.modelbridge.core.policy.Policy> = emptyList(),
+    ): String {
         val payload = ConfigBundle(
             version = EXPORT_VERSION,
             settings = settings,
             accounts = accounts,
+            policies = policies,
         )
         return runCatching {
             pendingJson = JSON.encodeToString(ConfigBundle.serializer(), payload)
@@ -132,6 +137,7 @@ data class ConfigBundle(
     val version: Int = ConfigTransfer.EXPORT_VERSION,
     val settings: GatewaySettings? = null,
     val accounts: List<Account>? = null,
+    val policies: List<io.modelbridge.core.policy.Policy>? = null,
 )
 
 /** 把 Uri 读成字符串。 */
