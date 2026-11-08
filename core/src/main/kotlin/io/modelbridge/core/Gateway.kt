@@ -21,6 +21,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import io.modelbridge.core.policy.Policy
+import io.modelbridge.core.policy.PolicyInjector
+import io.modelbridge.core.policy.PolicyMatcher
+import io.modelbridge.core.policy.InjectionProtocol
+import io.modelbridge.core.policy.InjectionResult
 
 /**
  * 网关配置。
@@ -60,7 +65,19 @@ class Gateway(
      * 不该为了统计去解析它。
      */
     private val onUsage: ((Usage) -> Unit)? = null,
+    /** 策略仓储；为 null 表示不启用策略注入。 */
+    private val policyStore: io.modelbridge.core.policy.PolicyStore? = null,
 ) {
+    /** 最近一次请求命中的策略名，供日志展示。 */
+    @Volatile
+    var policyName: String? = null
+        private set
+
+    /** 最近一次策略注入失败的原因。 */
+    @Volatile
+    var lastPolicyError: String? = null
+        private set
+
     private val json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
@@ -165,6 +182,47 @@ class Gateway(
         contextLength = model.contextLength.takeIf { it > 0 },
     )
 
+    /**
+     * 按模型匹配并应用策略。
+     *
+     * 与原版一致：一次请求最多一条策略，注入失败只记录、不影响转发。
+     *
+     * @return 注入后的请求；没有策略或注入失败返回 null
+     */
+    private fun applyPolicy(modelId: String, rawBody: String): Pair<ChatRequest, Policy>? {
+        val policies = policyStore?.all() ?: return null
+        if (policies.isEmpty()) return null
+
+        val matched = PolicyMatcher.match(
+            policies = policies,
+            candidateModelIds = listOf(modelId),
+        ) ?: return null
+
+        if (matched.instruction.isBlank()) return null
+
+        val result = PolicyInjector.inject(
+            body = rawBody,
+            instruction = matched.instruction,
+            protocol = InjectionProtocol.Chat,
+        )
+
+        return when (result) {
+            is InjectionResult.Applied -> {
+                // 重新解析注入后的请求体，转成内核模型
+                val wire = runCatching {
+                    json.decodeFromString(ChatCompletionRequest.serializer(), result.body)
+                }.getOrNull() ?: return null
+                Mapper.toChatRequest(wire).copy(model = modelId) to matched
+            }
+            is InjectionResult.Failed -> {
+                // 注入失败不阻断请求，按原文转发
+                lastPolicyError = result.reason
+                null
+            }
+            InjectionResult.Skipped -> null
+        }
+    }
+
     private suspend fun chat(request: ServerRequest): HttpResult {
         if (request.method != "POST") {
             throw GatewayError.BadRequest("该路径只接受 POST")
@@ -173,17 +231,27 @@ class Gateway(
             throw GatewayError.BadRequest("请求体为空")
         }
 
+        val rawBody = request.body.toString(StandardCharsets.UTF_8)
+
         val wire = try {
             json.decodeFromString(
                 ChatCompletionRequest.serializer(),
-                request.body.toString(StandardCharsets.UTF_8),
+                rawBody,
             )
         } catch (e: Exception) {
             throw GatewayError.BadRequest("请求体不是合法的 JSON：${e.message}")
         }
 
         val modelId = wire.model.removePrefix(config.publicModelPrefix)
-        val internal = Mapper.toChatRequest(wire).copy(model = modelId)
+        var internal = Mapper.toChatRequest(wire).copy(model = modelId)
+
+        // 策略注入：按模型匹配一条策略，把正文前置进请求。
+        // 与原版一致——一次请求最多一条策略，失败不影响转发。
+        policyName = null
+        applyPolicy(modelId, rawBody)?.let { (injected, policy) ->
+            internal = injected
+            policyName = policy.name
+        }
 
         val targets = router.resolve(modelId)
         val failures = mutableListOf<String>()
