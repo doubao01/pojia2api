@@ -18,6 +18,7 @@ import io.modelbridge.spi.Usage
 import io.modelbridge.spi.ProviderContext
 import io.modelbridge.spi.ProviderException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -37,9 +38,32 @@ data class GatewayConfig(
     val apiKeys: Set<String> = emptySet(),
     val publicModelPrefix: String = "",
     val enableCors: Boolean = true,
+    /**
+     * 同一次请求在账号之间最多重试几次（不含第一次）。
+     *
+     * 原版「我的」页里的「重试次数」。0 表示每个账号只试一次，
+     * 仍然是逐个账号故障转移，只是不再回头重试已失败的账号。
+     */
+    val maxRetries: Int = 2,
+    /** 单次上游调用超时（秒）。0 或负数表示不设超时。 */
+    val requestTimeoutSeconds: Int = 120,
+    /**
+     * 转发时不带客户端识别头。
+     *
+     * 原版「身份与指纹」里的开关：上游只该看到网关自己，
+     * 而不是终端客户端的 UA / 来源信息。
+     */
+    val stripClientFingerprint: Boolean = false,
 ) {
     /** 是否启用鉴权。 */
     val authEnabled: Boolean get() = apiKeys.isNotEmpty()
+
+    /** 实际生效的重试次数，负数按 0 处理。 */
+    val effectiveMaxRetries: Int get() = maxRetries.coerceAtLeast(0)
+
+    /** 超时毫秒；null 表示不限。 */
+    val requestTimeoutMillis: Long?
+        get() = requestTimeoutSeconds.takeIf { it > 0 }?.toLong()?.times(1000)
 }
 
 /**
@@ -251,29 +275,43 @@ class Gateway(
         policyName = null
         lastPolicyError = null
         // 每次从原始请求体注入，故障转移不叠加前一个账号的策略。
-        for (target in targets) {
-            try {
-                val applied = applyPolicy(target.model.id, rawBody, target.account.fixedPolicyId)
-                val internal = applied?.first ?: original
-                policyName = applied?.second?.name
-                val context = contextFactory(target.provider, target.account)
-                val result = target.provider.chat(context, internal)
-                health.recordSuccess(target.account.id)
-                return when (result) {
-                    is ChatResult.Complete -> completeResponse(result.response.id, modelId, result)
-                    is ChatResult.Stream -> streamResponse(modelId, result.chunks)
+        // 重试按「整轮」计：先把账号按优先级走一遍做故障转移，
+        // 整轮都失败后再从头重试一轮。这样单账号时是原地重试，
+        // 多账号时不会把请求钉死在第一个坏账号上。
+        val rounds = config.effectiveMaxRetries + 1
+        var round = 0
+        while (round < rounds) {
+            round++
+            var progressed = false
+            for (target in targets) {
+                // 已进冷却的账号本轮跳过，不浪费超时预算
+                if (!health.isAvailable(target.account.id)) continue
+                progressed = true
+                try {
+                    val applied = applyPolicy(target.model.id, rawBody, target.account.fixedPolicyId)
+                    val internal = applied?.first ?: original
+                    policyName = applied?.second?.name
+                    val context = contextFactory(target.provider, target.account)
+                    val result = callWithTimeout { target.provider.chat(context, internal) }
+                    health.recordSuccess(target.account.id)
+                    return when (result) {
+                        is ChatResult.Complete -> completeResponse(result.response.id, modelId, result)
+                        is ChatResult.Stream -> streamResponse(modelId, result.chunks)
+                    }
+                } catch (e: ProviderException) {
+                    health.recordFailure(target.account.id)
+                    failures += "${target.provider.id}/${target.account.id}: ${e.message}"
+                    if (!e.retryable) {
+                        // 明确不可重试的错误直接返回，不必再试其它账号
+                        throw GatewayError.UpstreamUnavailable(e.message ?: "上游失败", cause = e)
+                    }
+                } catch (e: Exception) {
+                    health.recordFailure(target.account.id)
+                    failures += "${target.provider.id}/${target.account.id}: ${e.message}"
                 }
-            } catch (e: ProviderException) {
-                val cooled = health.recordFailure(target.account.id)
-                failures += "${target.provider.id}/${target.account.id}: ${e.message}"
-                if (!e.retryable && !cooled) {
-                    // 明确不可重试的错误直接返回，不必再试其它账号
-                    throw GatewayError.UpstreamUnavailable(e.message ?: "上游失败", cause = e)
-                }
-            } catch (e: Exception) {
-                health.recordFailure(target.account.id)
-                failures += "${target.provider.id}/${target.account.id}: ${e.message}"
             }
+            // 所有账号都在冷却，再重试也没有可用上游
+            if (!progressed) break
         }
 
         throw GatewayError.UpstreamUnavailable(
@@ -366,6 +404,17 @@ class Gateway(
         io.modelbridge.spi.ChatMessage.Role.User -> "user"
         io.modelbridge.spi.ChatMessage.Role.Assistant -> "assistant"
         io.modelbridge.spi.ChatMessage.Role.Tool -> "tool"
+    }
+
+    /**
+     * 按设置里的「请求超时」包住一次上游调用。
+     *
+     * 超时按整个调用的总时长算，包含流式响应建立连接的时间；
+     * 设置里填 0 或负数表示不限，直接透传。
+     */
+    private suspend fun <T> callWithTimeout(block: suspend () -> T): T {
+        val limit = config.requestTimeoutMillis ?: return block()
+        return withTimeout(limit) { block() }
     }
 
     private fun error(e: GatewayError): HttpResult {

@@ -85,12 +85,18 @@ class AppContainer(private val app: Application) {
     /**
      * 网关配置随设置变化。访问密钥不为空即启用鉴权。
      */
-    private fun buildConfig() = GatewayConfig(
-        apiKeys = settings.current().accessKey
-            .takeIf { it.isNotBlank() }
-            ?.let { setOf(it) }
-            ?: emptySet(),
-    )
+    private fun buildConfig(): GatewayConfig {
+        val s = settings.current()
+        return GatewayConfig(
+            apiKeys = s.accessKey
+                .takeIf { it.isNotBlank() }
+                ?.let { setOf(it) }
+                ?: emptySet(),
+            maxRetries = s.maxRetries,
+            requestTimeoutSeconds = s.requestTimeoutSeconds,
+            stripClientFingerprint = s.stripClientFingerprint,
+        )
+    }
 
     /**
      * 上游用量回调，由 [GatewayRunner] 注册。
