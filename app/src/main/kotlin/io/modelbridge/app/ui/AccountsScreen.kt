@@ -156,6 +156,15 @@ fun AccountsScreen(vms: ViewModels) {
         )
     }
 
+    // Qoder / CodeBuddy 设备授权（WebView + 后台轮询）
+    deviceLogin?.let { provider ->
+        DeviceLoginDialog(
+            provider = provider,
+            vms = vms,
+            onDismiss = { deviceLogin = null },
+        )
+    }
+
     // Loomy 手机验证码登录：发送短信与确认验证码分两步
     if (loomyLogin) {
         LoomySmsDialog(
