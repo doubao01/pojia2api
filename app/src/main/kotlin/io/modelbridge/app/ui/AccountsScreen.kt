@@ -51,6 +51,7 @@ fun AccountsScreen(vms: ViewModels) {
     var editing by remember { mutableStateOf<AccountEdit?>(null) }
     var webLogin by remember { mutableStateOf<AccountEdit?>(null) }
     var deviceLogin by remember { mutableStateOf<Provider?>(null) }
+    var loomyLogin by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -115,6 +116,7 @@ fun AccountsScreen(vms: ViewModels) {
                     onEdit = { acc -> editing = AccountEdit(provider = group.provider, account = acc) },
                     onWebLogin = { webLogin = AccountEdit(provider = group.provider) },
                     onDeviceLogin = { deviceLogin = group.provider },
+                    onSmsLogin = { loomyLogin = true },
                 )
             }
         }
@@ -154,12 +156,11 @@ fun AccountsScreen(vms: ViewModels) {
         )
     }
 
-    // Qoder / CodeBuddy 设备授权（WebView + 后台轮询）
-    deviceLogin?.let { provider ->
-        DeviceLoginDialog(
-            provider = provider,
+    // Loomy 手机验证码登录：发送短信与确认验证码分两步
+    if (loomyLogin) {
+        LoomySmsDialog(
             vms = vms,
-            onDismiss = { deviceLogin = null },
+            onDismiss = { loomyLogin = false },
         )
     }
 }
@@ -179,6 +180,7 @@ private fun ProviderCard(
     onEdit: (Account) -> Unit,
     onWebLogin: () -> Unit,
     onDeviceLogin: () -> Unit,
+    onSmsLogin: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -266,7 +268,7 @@ private fun ProviderCard(
                         TextButton(onClick = onAdd) { Text("手动添加", fontSize = 13.sp) }
                     }
                     AuthKind.PhoneCode -> {
-                        TextButton(onClick = onAdd) { Text("手机号验证码登录", fontSize = 13.sp) }
+                        TextButton(onClick = onSmsLogin) { Text("手机号验证码登录", fontSize = 13.sp) }
                     }
                 }
             }

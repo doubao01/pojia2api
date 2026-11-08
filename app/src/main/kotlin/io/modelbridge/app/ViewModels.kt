@@ -12,10 +12,12 @@ import io.modelbridge.providers.auth.DeviceAuthClient
 import io.modelbridge.providers.auth.DeviceAuthCredentials
 import io.modelbridge.providers.auth.DeviceAuthPollResult
 import io.modelbridge.providers.auth.DeviceAuthSession
+import io.modelbridge.providers.auth.LoomySession
+import io.modelbridge.providers.auth.LoomySmsAuth
+import io.modelbridge.providers.auth.LoomySmsChallenge
 import io.modelbridge.providers.auth.QoderClientIds
 import io.modelbridge.providers.auth.QoderDeviceAuth
 import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
-import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.spi.Credential
 import io.modelbridge.spi.ModelInfo
 import io.modelbridge.spi.Provider
@@ -318,7 +320,84 @@ class ViewModels(
     }
 
 
-    fun updateSettings(block: (GatewaySettings) -> GatewaySettings) {
+    // ---------- Loomy 手机验证码登录 ----------
+
+    data class LoomyLoginUiState(
+        val phone: String = "",
+        val challenge: LoomySmsChallenge? = null,
+        val busy: Boolean = false,
+        val message: String = "请输入手机号，点击发送验证码",
+        val finished: Boolean = false,
+    )
+
+    private val _loomyLogin = MutableStateFlow(LoomyLoginUiState())
+    val loomyLogin: StateFlow<LoomyLoginUiState> = _loomyLogin.asStateFlow()
+
+    fun sendLoomyCode(phone: String) {
+        val auth = container.loomySmsAuth
+        if (auth == null) {
+            _loomyLogin.value = LoomyLoginUiState(
+                phone = phone,
+                message = "Loomy 签名材料未配置，暂不能发送短信",
+            )
+            return
+        }
+        _loomyLogin.value = LoomyLoginUiState(phone = phone, busy = true, message = "正在发送验证码…")
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { auth.sendCode(phone) }
+                .onSuccess { challenge ->
+                    _loomyLogin.value = LoomyLoginUiState(
+                        phone = challenge.phone,
+                        challenge = challenge,
+                        message = "验证码已发送，请输入短信中的验证码",
+                    )
+                }
+                .onFailure { error ->
+                    _loomyLogin.value = LoomyLoginUiState(
+                        phone = phone,
+                        message = error.message ?: "验证码发送失败",
+                    )
+                }
+        }
+    }
+
+    fun completeLoomyLogin(code: String) {
+        val auth = container.loomySmsAuth
+        val state = _loomyLogin.value
+        val challenge = state.challenge
+        if (auth == null || challenge == null) {
+            _loomyLogin.value = state.copy(message = "请先发送验证码")
+            return
+        }
+        _loomyLogin.value = state.copy(busy = true, message = "正在验证…")
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { auth.checkCode(challenge, code) }
+                .onSuccess { session ->
+                    saveAccount(
+                        providerId = "loomy",
+                        label = "Loomy（${session.userId.ifBlank { session.phone }}）",
+                        credential = Credential.Session(session.phone, session.session),
+                        authUid = session.userId,
+                        authNickname = session.userId,
+                        authTokenKind = "Session",
+                    )
+                    _loomyLogin.value = state.copy(
+                        busy = false,
+                        message = "登录成功",
+                        finished = true,
+                    )
+                }
+                .onFailure { error ->
+                    _loomyLogin.value = state.copy(busy = false, message = error.message ?: "验证码错误")
+                }
+        }
+    }
+
+    fun resetLoomyLogin() {
+        _loomyLogin.value = LoomyLoginUiState()
+    }
+
+
         val before = container.settings.current()
         container.settings.edit(block)
         container.applySettings()

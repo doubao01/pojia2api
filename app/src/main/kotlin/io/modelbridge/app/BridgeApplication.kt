@@ -13,6 +13,8 @@ import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.core.Router
 import io.modelbridge.core.http.JvmHttpClient
 import io.modelbridge.providers.BuiltInProviders
+import io.modelbridge.providers.auth.LoomySigningMaterial
+import io.modelbridge.providers.auth.LoomySmsAuth
 import io.modelbridge.spi.HttpClient
 import io.modelbridge.spi.Provider
 import io.modelbridge.spi.ProviderContext
@@ -45,6 +47,12 @@ class AppContainer(private val app: Application) {
 
     /** 应用级 Context，供需要 Context 的辅助组件使用。 */
     val context: Application get() = app
+
+    /**
+     * Loomy 短信签名材料由宿主构建注入；当前公开源码默认未配置。
+     * UI 会明确提示缺少配置，不会自动发送短信或伪造登录成功。
+     */
+    val loomySmsAuth: LoomySmsAuth? = null
 
     val httpClient: HttpClient = JvmHttpClient()
 
