@@ -107,7 +107,7 @@ class FloatingBallService : Service() {
             private var dragged = false
 
             override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.action) {
+                return when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         downX = event.rawX
                         downY = event.rawY
