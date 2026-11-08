@@ -8,6 +8,7 @@ import io.modelbridge.app.service.FloatingBallService
 import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
+import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.providers.auth.DeviceAuthClient
 import io.modelbridge.providers.auth.DeviceAuthCredentials
 import io.modelbridge.providers.auth.DeviceAuthPollResult
@@ -396,8 +397,7 @@ class ViewModels(
     fun resetLoomyLogin() {
         _loomyLogin.value = LoomyLoginUiState()
     }
-
-
+    fun updateSettings(block: (GatewaySettings) -> GatewaySettings) {
         val before = container.settings.current()
         container.settings.edit(block)
         container.applySettings()
