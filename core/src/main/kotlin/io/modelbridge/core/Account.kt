@@ -30,6 +30,18 @@ data class Account(
     val priority: Int = 0,
     /** 该账号下被禁用的模型 ID，用于精细控制。 */
     val disabledModels: Set<String> = emptySet(),
+    /** 设备授权区域，例如 cn/global。 */
+    val authRegion: String = "",
+    /** 供应商返回的用户 ID。 */
+    val authUid: String = "",
+    /** 企业/租户 ID，WorkBuddy 刷新时需要。 */
+    val authTenantId: String = "",
+    /** 设备授权返回的域名。 */
+    val authDomain: String = "",
+    /** 供应商返回的昵称。 */
+    val authNickname: String = "",
+    /** 令牌类型，默认 Bearer。 */
+    val authTokenKind: String = "Bearer",
     /** 固定绑定策略；null 按模型自动匹配，停用或已删除的策略不注入。 */
     val fixedPolicyId: String? = null,
 ) {

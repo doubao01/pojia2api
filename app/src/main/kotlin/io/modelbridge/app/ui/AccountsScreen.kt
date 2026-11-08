@@ -50,6 +50,7 @@ fun AccountsScreen(vms: ViewModels) {
 
     var editing by remember { mutableStateOf<AccountEdit?>(null) }
     var webLogin by remember { mutableStateOf<AccountEdit?>(null) }
+    var deviceLogin by remember { mutableStateOf<Provider?>(null) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -113,6 +114,7 @@ fun AccountsScreen(vms: ViewModels) {
                     onAdd = { editing = AccountEdit(provider = group.provider) },
                     onEdit = { acc -> editing = AccountEdit(provider = group.provider, account = acc) },
                     onWebLogin = { webLogin = AccountEdit(provider = group.provider) },
+                    onDeviceLogin = { deviceLogin = group.provider },
                 )
             }
         }
@@ -151,6 +153,15 @@ fun AccountsScreen(vms: ViewModels) {
             },
         )
     }
+
+    // Qoder / CodeBuddy 设备授权（WebView + 后台轮询）
+    deviceLogin?.let { provider ->
+        DeviceLoginDialog(
+            provider = provider,
+            vms = vms,
+            onDismiss = { deviceLogin = null },
+        )
+    }
 }
 
 /** 编辑态：只带 account 表示改已有的，否则是新增。 */
@@ -167,6 +178,7 @@ private fun ProviderCard(
     onAdd: () -> Unit,
     onEdit: (Account) -> Unit,
     onWebLogin: () -> Unit,
+    onDeviceLogin: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -246,7 +258,11 @@ private fun ProviderCard(
                         TextButton(onClick = onAdd) { Text("手动填 Cookie", fontSize = 13.sp) }
                     }
                     AuthKind.OAuth -> {
-                        TextButton(onClick = onWebLogin) { Text("OAuth 登录", fontSize = 13.sp) }
+                        if (group.provider.id == "qoder" || group.provider.id == "codebuddy") {
+                            TextButton(onClick = onDeviceLogin) { Text("设备授权", fontSize = 13.sp) }
+                        } else {
+                            TextButton(onClick = onWebLogin) { Text("OAuth 登录", fontSize = 13.sp) }
+                        }
                         TextButton(onClick = onAdd) { Text("手动添加", fontSize = 13.sp) }
                     }
                     AuthKind.PhoneCode -> {

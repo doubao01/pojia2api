@@ -8,6 +8,13 @@ import io.modelbridge.app.service.FloatingBallService
 import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
+import io.modelbridge.providers.auth.DeviceAuthClient
+import io.modelbridge.providers.auth.DeviceAuthCredentials
+import io.modelbridge.providers.auth.DeviceAuthPollResult
+import io.modelbridge.providers.auth.DeviceAuthSession
+import io.modelbridge.providers.auth.QoderClientIds
+import io.modelbridge.providers.auth.QoderDeviceAuth
+import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
 import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.spi.Credential
 import io.modelbridge.spi.ModelInfo
@@ -15,6 +22,7 @@ import io.modelbridge.spi.Provider
 import io.modelbridge.spi.ProviderContext
 import io.modelbridge.spi.ValidationResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -186,7 +195,128 @@ class ViewModels(
         }
     }
 
-    // ---------- 设置 ----------
+    // ---------- 设备授权登录 ----------
+
+    data class DeviceLoginUiState(
+        val providerId: String,
+        val session: DeviceAuthSession? = null,
+        val pending: Boolean = true,
+        val message: String = "正在准备登录…",
+        val finished: Boolean = false,
+    )
+
+    private val _deviceLogin = MutableStateFlow<DeviceLoginUiState?>(null)
+    val deviceLogin: StateFlow<DeviceLoginUiState?> = _deviceLogin.asStateFlow()
+    private var deviceLoginJob: kotlinx.coroutines.Job? = null
+    private var deviceLoginClient: DeviceAuthClient? = null
+
+    fun beginDeviceLogin(providerId: String, region: String = "cn") {
+        if (providerId != "qoder" && providerId != "codebuddy") {
+            toast("该供应商暂未接入设备授权")
+            return
+        }
+        deviceLoginJob?.cancel()
+        deviceLoginJob = viewModelScope.launch(Dispatchers.IO) {
+            val client: DeviceAuthClient = when (providerId) {
+                "qoder" -> QoderDeviceAuth(
+                    container.httpClient,
+                    QoderClientIds(
+                        cn = "00000000-0000-0000-0000-000000000000",
+                        global = "00000000-0000-0000-0000-000000000000",
+                    ),
+                )
+                else -> WorkBuddyDeviceAuth(container.httpClient)
+            }
+            deviceLoginClient = client
+            try {
+                val session = client.begin(region)
+                _deviceLogin.value = DeviceLoginUiState(
+                    providerId = providerId,
+                    session = session,
+                    message = "请在下方页面完成登录，等待授权确认",
+                )
+                val deadline = minOf(session.expiresAtMillis, System.currentTimeMillis() + 300_000)
+                while (kotlinx.coroutines.currentCoroutineContext().isActive &&
+                    System.currentTimeMillis() < deadline
+                ) {
+                    when (val result = client.poll(session)) {
+                        DeviceAuthPollResult.Pending -> {
+                            _deviceLogin.value = _deviceLogin.value?.copy(
+                                pending = true,
+                                message = "等待授权确认…",
+                            )
+                            delay(session.pollIntervalMillis)
+                        }
+                        is DeviceAuthPollResult.Success -> {
+                            saveDeviceCredentials(result.credentials)
+                            _deviceLogin.value = _deviceLogin.value?.copy(
+                                pending = false,
+                                message = "登录成功：${result.credentials.nickname.ifBlank { "已登录" }}",
+                                finished = true,
+                            )
+                            return@launch
+                        }
+                        DeviceAuthPollResult.Cancelled -> {
+                            _deviceLogin.value = null
+                            return@launch
+                        }
+                        DeviceAuthPollResult.Expired -> {
+                            _deviceLogin.value = _deviceLogin.value?.copy(
+                                pending = false, message = "授权已过期，请重新开始", finished = true,
+                            )
+                            return@launch
+                        }
+                        is DeviceAuthPollResult.Failed -> {
+                            _deviceLogin.value = _deviceLogin.value?.copy(
+                                pending = false, message = result.failure.message, finished = true,
+                            )
+                            return@launch
+                        }
+                    }
+                }
+                client.cancel(session)
+                _deviceLogin.value = _deviceLogin.value?.copy(
+                    pending = false, message = "授权超时，请重新开始", finished = true,
+                )
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _deviceLogin.value = DeviceLoginUiState(
+                    providerId = providerId, pending = false,
+                    message = error.message ?: "无法开始设备授权", finished = true,
+                )
+            }
+        }
+    }
+
+    private fun saveDeviceCredentials(credentials: DeviceAuthCredentials) {
+        val label = credentials.nickname.ifBlank { "${credentials.providerId}（设备授权）" }
+        saveAccount(
+            providerId = credentials.providerId,
+            label = label,
+            credential = credentials.credential,
+            authRegion = credentials.region,
+            authUid = credentials.uid,
+            authTenantId = credentials.tenantId,
+            authDomain = credentials.domain,
+            authNickname = credentials.nickname,
+            authTokenKind = credentials.tokenKind.ifBlank { credentials.credential.tokenType },
+        )
+    }
+
+    fun cancelDeviceLogin() {
+        deviceLoginJob?.cancel()
+        deviceLoginJob = null
+        deviceLogin?.value?.session?.let { deviceLoginClient?.cancel(it) }
+        deviceLoginClient = null
+        _deviceLogin.value = null
+    }
+
+    override fun onCleared() {
+        cancelDeviceLogin()
+        super.onCleared()
+    }
+
 
     fun updateSettings(block: (GatewaySettings) -> GatewaySettings) {
         val before = container.settings.current()
@@ -273,6 +403,12 @@ class ViewModels(
         credential: Credential,
         baseUrl: String = "",
         enabled: Boolean = true,
+        authRegion: String = "",
+        authUid: String = "",
+        authTenantId: String = "",
+        authDomain: String = "",
+        authNickname: String = "",
+        authTokenKind: String = "Bearer",
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             val existing = id?.let { container.accountStore.find(it) }
@@ -285,6 +421,12 @@ class ViewModels(
                 baseUrl = baseUrl.ifBlank { existing?.baseUrl ?: "" },
                 priority = existing?.priority ?: 0,
                 disabledModels = existing?.disabledModels ?: emptySet(),
+                authRegion = authRegion.ifBlank { existing?.authRegion ?: "" },
+                authUid = authUid.ifBlank { existing?.authUid ?: "" },
+                authTenantId = authTenantId.ifBlank { existing?.authTenantId ?: "" },
+                authDomain = authDomain.ifBlank { existing?.authDomain ?: "" },
+                authNickname = authNickname.ifBlank { existing?.authNickname ?: "" },
+                authTokenKind = authTokenKind.ifBlank { existing?.authTokenKind ?: "Bearer" },
                 fixedPolicyId = existing?.fixedPolicyId,
             )
             container.accountStore.upsert(account)
