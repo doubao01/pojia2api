@@ -62,8 +62,8 @@ fun HomeScreen(
     }.distinct()
     val accessKeySummary = when {
         accessKeys.isEmpty() -> "未设置，本机任意客户端可访问"
-        accessKeys.size == 1 -> "已设置"
-        else -> "已设置 ${accessKeys.size} 个密钥"
+        accessKeys.size == 1 -> "已启用校验"
+        else -> "已启用校验 · ${accessKeys.size} 个密钥"
     }
 
     val total = stats.value.total

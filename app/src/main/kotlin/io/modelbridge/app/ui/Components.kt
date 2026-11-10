@@ -247,6 +247,7 @@ fun TextRow(
     hint: String? = null,
     placeholder: String = "",
     masked: Boolean = false,
+    maskedLabel: String = "已设置",
     multiline: Boolean = false,
     onValueChange: (String) -> Unit,
 ) {
@@ -256,7 +257,7 @@ fun TextRow(
         label = label,
         value = when {
             value.isBlank() -> hint ?: "未设置"
-            masked -> "已设置"
+            masked -> maskedLabel
             else -> value
         },
         onClick = { editing = true },

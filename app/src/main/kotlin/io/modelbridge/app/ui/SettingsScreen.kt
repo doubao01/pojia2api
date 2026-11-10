@@ -59,6 +59,7 @@ fun SettingsScreen(vms: ViewModels) {
                 hint = "未设置（不校验）",
                 placeholder = "留空表示不校验",
                 masked = true,
+                maskedLabel = "已启用校验",
                 onValueChange = { vms.updateSettings { s -> s.copy(accessKey = it) } },
             )
             RowDivider()
