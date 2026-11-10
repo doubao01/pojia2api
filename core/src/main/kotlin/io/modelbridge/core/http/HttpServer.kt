@@ -144,7 +144,7 @@ class HttpServer(
                 val output = socket.getOutputStream()
 
                 while (true) {
-                    val request = readRequest(input) ?: return@runCatching
+                    val request = readRequest(input, output) ?: return@runCatching
                     val result = try {
                         handler(request)
                     } catch (e: Exception) {
@@ -169,7 +169,7 @@ class HttpServer(
     }
 
     /** 读一个完整请求；对端正常关闭时返回 null。 */
-    private fun readRequest(input: InputStream): ServerRequest? {
+    private fun readRequest(input: InputStream, output: OutputStream): ServerRequest? {
         val head = readHead(input) ?: return null
         if (head.isBlank()) return null
 
@@ -190,10 +190,18 @@ class HttpServer(
         }
 
         val (path, query) = splitTarget(parts[1])
-        val body = readBody(input, headers)
+        val method = parts[0].uppercase()
+        // 3.10.0 `C/RunnableC0013m.java`：POST/PUT/PATCH 支持 Expect: 100-continue。
+        val hasBodyMethod = method == "POST" || method == "PUT" || method == "PATCH"
+        val expect = headers["expect"]
+        if (hasBodyMethod && expect?.contains("100-continue", ignoreCase = true) == true) {
+            output.write("HTTP/1.1 100 Continue\r\n\r\n".toByteArray(StandardCharsets.ISO_8859_1))
+            output.flush()
+        }
+        val body = if (hasBodyMethod) readBody(input, headers) else ByteArray(0)
 
         return ServerRequest(
-            method = parts[0].uppercase(),
+            method = method,
             path = path,
             query = query,
             version = parts.getOrElse(2) { "HTTP/1.1" },
