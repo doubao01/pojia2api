@@ -14,12 +14,19 @@ class AccountCenterModeContractTest {
         val root = findProjectRoot()
         val main = File(root, "app/src/main/kotlin/io/modelbridge/app/MainActivity.kt").readText()
         val screen = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/TaskQuotaScreen.kt").readText()
+        val home = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/HomeScreen.kt").readText()
 
         assertTrue(main.contains("AccountCenterMode.Accounts"))
         assertTrue(main.contains("AccountCenterMode.Tasks"))
         assertTrue(screen.contains("enum class AccountCenterMode"))
         assertTrue(screen.contains("AccountCenterMode.Tasks -> TaskCenter"))
         assertTrue(screen.contains("AccountCenterMode.Accounts -> AccountCenter"))
+        assertTrue(screen.contains("\"按供应商一键签到与领取任务\""))
+        assertTrue(screen.contains("\"每日自动检测一次账号可用性\""))
+        assertTrue(home.contains("\"账号管理\""))
+        assertTrue(home.contains("\"任务管理\""))
+        assertTrue(home.contains("\"签到、任务、额度一目了然\""))
+        assertTrue(screen.contains("vms.checkAccountsDaily()"))
     }
 
     private fun findProjectRoot(): File {

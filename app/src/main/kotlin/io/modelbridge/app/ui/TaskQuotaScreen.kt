@@ -41,12 +41,16 @@ fun TaskQuotaScreen(
     val accounts by vms.accounts.collectAsState()
     val state by vms.taskQuota.collectAsState()
     val credits by vms.accountCredits.collectAsState()
+    val checks by vms.checks.collectAsState()
     val enabledAccounts = accounts.filter { it.enabled }
     val accountIds = accounts.map { it.id }
     LaunchedEffect(mode, accountIds) {
         when (mode) {
             AccountCenterMode.Tasks -> vms.refreshTaskQuota()
-            AccountCenterMode.Accounts -> accountIds.forEach { vms.refreshAccountCredit(it) }
+            AccountCenterMode.Accounts -> {
+                accountIds.forEach { vms.refreshAccountCredit(it) }
+                vms.checkAccountsDaily()
+            }
         }
     }
 
@@ -62,6 +66,7 @@ fun TaskQuotaScreen(
                 vms = vms,
                 accounts = accounts,
                 credits = credits,
+                checks = checks,
                 state = state,
             )
         }
@@ -152,11 +157,12 @@ private fun AccountCenter(
     vms: ViewModels,
     accounts: List<Account>,
     credits: Map<String, ViewModels.AccountCreditUiState>,
+    checks: Map<String, String>,
     state: ViewModels.TaskQuotaUiState,
 ) {
     Text("账号管理", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = AppStyle.TitleText)
     Text(
-        "签到、任务、额度一目了然",
+        "每日自动检测一次账号可用性",
         fontSize = 13.sp,
         color = AppStyle.SubtitleText,
         modifier = Modifier.padding(top = 5.dp, bottom = 14.dp),
@@ -199,6 +205,7 @@ private fun AccountCenter(
                                 add(if (credit?.checkedInToday == true) "今日已签到" else "今日未签到")
                             }
                             if (!canCredit && !canCheckIn) add("未接入积分或签到")
+                            checks[account.id]?.let { add("连通：$it") }
                             quota?.detail?.takeIf { it.isNotBlank() }?.let { add("额度：$it") }
                             quota?.error?.takeIf { it.isNotBlank() }?.let { add(it) }
                         }.joinToString(" · "),

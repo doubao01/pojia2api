@@ -141,7 +141,7 @@ fun HomeScreen(
             RowDivider()
             ActionRow(
                 label = "任务管理",
-                hint = if (running) "签到、任务、额度" else "先启动网关",
+                hint = "签到、任务、额度一目了然",
                 onClick = onOpenTasks,
             )
             RowDivider()

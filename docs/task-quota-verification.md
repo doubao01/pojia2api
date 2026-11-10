@@ -32,14 +32,15 @@
 
 - `AccountServicesTest` 8 项、`LoomyAccountServiceTest` 4 项、`BearerCreditServicesTest` 4 项、`TabbitAccountServiceTest` 4 项、`MeooAccountServiceTest` 3 项、`TraeAccountServiceTest` 4 项、`AStudioAccountServiceTest` 2 项：覆盖已接入供应商的请求头、路径、响应解析、签到与任务状态、失败隔离。
 - 未实现边界：AgentMore 的 `X-Sign` 依赖原 APK 固定盐值，不从反编译源码复制，因此未生成不可信签名请求；Dangbei 原版 `c(account)` 直接返回 `null`，保持明确不支持。
-- `./gradlew :core:test :providers:test --offline`：core 84、providers 85，失败 0。
+- `./gradlew :core:test :providers:test --offline`：core 84、providers 88，失败 0。
 - `AccountDailyCheckinTest` 2 项：按 Asia/Shanghai 自然日和账号 ID 生成签到键，验证同日幂等、跨日清除、账号隔离。
-- 供应商页账号行按 `CREDIT_REFRESH` / `CHECKIN` 能力展示真实可用积分、额度详情、今日已签到/未签到，并提供单账号「刷新积分」「签到」；签到状态持久化在 `DailyCheckinStore`，不把本地缓存冒充服务端记录。
+- `AccountHealthScheduleTest` 3 项：按 provider+account 与 Asia/Shanghai 自然日缓存账号可用性，同日复用、跨日重检、结果更新和过期裁剪。
+- `AccountCenterModeContractTest`：静态验证首页两个入口分别对应任务管理/账号管理、两个模式渲染到不同子页、页面副标题按 3.10.0 对齐，以及账号管理页触发每日检测。
+- 供应商页账号行及独立账号管理页按 `CREDIT_REFRESH` / `CHECKIN` 能力展示真实可用积分、额度详情、今日已签到/未签到，并提供单账号「刷新积分」「签到」；签到状态持久化在 `DailyCheckinStore`，账号可用性按自然日缓存，不把本地状态冒充服务端记录。
 - CI 负责 Android `:app:assembleDebug` 编译与打包；JVM 测试不覆盖 Android UI 渲染。
 
 ## 边界
 
 - 3.9.3 为 JADX 反编译源码，部分方法存在寄存器/控制流还原警告；3.10.0 只提供 dex 字符串证据。请求与响应字段已按静态源码实现，但真实服务端是否接受请求、风控头、限频、幂等和额度单位仍需真机抓包验证。
-- `AccountCenterModeContractTest`：静态验证首页两个入口分别对应任务管理/账号管理，且两个模式渲染到不同子页。
 - 原版把「任务管理」和「账号管理」拆成两个页面；ModelBridge 现已按两个独立页面模式拆分并复用同一真实数据层，剩余差异是页面分组和像素布局的真机核对。
 - 未逐家实现的供应商在页面中显示不支持或查询失败；不会生成虚构额度。

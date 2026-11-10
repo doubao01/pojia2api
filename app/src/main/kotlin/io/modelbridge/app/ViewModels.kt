@@ -21,6 +21,7 @@ import io.modelbridge.providers.auth.QoderDeviceAuth
 import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
 import io.modelbridge.providers.account.AccountActionResult
 import io.modelbridge.providers.account.AccountCapability
+import io.modelbridge.providers.account.AccountHealthSchedule
 import io.modelbridge.providers.account.AccountQuota
 import io.modelbridge.providers.account.ProviderTask
 import io.modelbridge.providers.account.ProviderTaskList
@@ -174,6 +175,7 @@ class ViewModels(
     /** 连通性检测结果，按账号 id 索引。 */
     private val _checks = MutableStateFlow<Map<String, String>>(emptyMap())
     val checks: StateFlow<Map<String, String>> = _checks.asStateFlow()
+    private val healthSchedule = AccountHealthSchedule()
 
     /** 一次性提示消息（Toast 用）。 */
     private val _message = MutableStateFlow<String?>(null)
@@ -707,34 +709,63 @@ class ViewModels(
         }
     }
 
+    /** 原版「每日自动检测一次账号可用性」：进入账号管理页时按自然日复用结果。 */
+    fun checkAccountsDaily() {
+        viewModelScope.launch(Dispatchers.IO) {
+            healthSchedule.prune()
+            container.accountStore.all().filter { it.enabled }.forEach { account ->
+                val decision = healthSchedule.evaluate(account.providerId, account.id)
+                if (!decision.due && decision.cached != null) {
+                    val cached = decision.cached
+                    _checks.value = _checks.value + (account.id to cached.message.ifBlank {
+                        if (cached.reachable) "可用" else "不可用"
+                    })
+                    return@forEach
+                }
+                val result = validateAccount(account)
+                healthSchedule.record(
+                    account.providerId,
+                    account.id,
+                    reachable = result == "可用",
+                    message = result,
+                )
+                _checks.value = _checks.value + (account.id to result)
+            }
+        }
+    }
+
     /**
-     * 检测单个账号的连通性。
-     *
-     * 直接调用供应商的 `validate`，结果写进 [checks]。
+     * 检测单个账号的连通性；手动点击始终重新检测并刷新当日缓存。
      */
     fun checkAccount(account: Account) {
         _checks.value = _checks.value + (account.id to "检测中…")
         viewModelScope.launch(Dispatchers.IO) {
-            container.credentialRefresher.refreshAccount(account.id, ignoreBackoff = true)
-            val current = container.accountStore.find(account.id) ?: account
-            val provider = registry.find(current.providerId)
-            val result = if (provider == null) {
-                "供应商未找到"
-            } else {
-                runCatching {
-                    provider.validate(contextFor(provider, current))
-                }.fold(
-                    onSuccess = { r ->
-                        when (r) {
-                            is ValidationResult.Valid -> "可用"
-                            is ValidationResult.Invalid -> "失败：${r.reason}"
-                        }
-                    },
-                    onFailure = { "失败：${it.message ?: it::class.java.simpleName}" },
-                )
-            }
+            val result = validateAccount(account)
+            healthSchedule.record(
+                account.providerId,
+                account.id,
+                reachable = result == "可用",
+                message = result,
+            )
             _checks.value = _checks.value + (account.id to result)
         }
+    }
+
+    private suspend fun validateAccount(account: Account): String {
+        container.credentialRefresher.refreshAccount(account.id, ignoreBackoff = true)
+        val current = container.accountStore.find(account.id) ?: account
+        val provider = registry.find(current.providerId) ?: return "供应商未找到"
+        return runCatching {
+            provider.validate(contextFor(provider, current))
+        }.fold(
+            onSuccess = { result ->
+                when (result) {
+                    is ValidationResult.Valid -> "可用"
+                    is ValidationResult.Invalid -> "失败：${result.reason}"
+                }
+            },
+            onFailure = { "失败：${it.message ?: it::class.java.simpleName}" },
+        )
     }
 
     fun clearMessage() {
