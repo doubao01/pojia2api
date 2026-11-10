@@ -102,6 +102,11 @@ class UiCopyContractTest {
         assertTrue(accounts.contains(" 个网关"))
         assertTrue(accounts.contains("自定义中转站"))
         assertTrue(accounts.contains("还没有中转站"))
+        val settingsStore = File(root, "app/src/main/kotlin/io/modelbridge/app/prefs/SettingsStore.kt").readText()
+        assertTrue(settingsStore.contains("fun sanitized()"))
+        assertTrue(settingsStore.contains("val safe = value.sanitized()"))
+        assertTrue(settingsStore.contains("putInt(K_FLOATING_SIZE, safe.floatingBallSizeDp)"))
+        assertTrue(settingsStore.contains(").sanitized()"))
     }
 
     private fun findProjectRoot(): File {

@@ -47,8 +47,22 @@ data class GatewaySettings(
     /** 去掉客户端指纹（转发时不带上游不需要的识别头）。 */
     val stripClientFingerprint: Boolean = false,
 ) {
-    /** 有效端口范围。 */
-    fun isValid(): Boolean = port in 1..65535
+    /** 有效端口范围；0 表示由系统分配。 */
+    fun isValid(): Boolean = port in 0..65535
+
+    /**
+     * 把导入配置、旧存档或程序化写入的数值收敛到界面允许范围。
+     * 布尔值和访问密钥保持原样；端口为 0 时保留（表示系统分配）。
+     */
+    fun sanitized(): GatewaySettings = copy(
+        port = if (port == 0) 0 else port.coerceIn(1024, 65535),
+        maxRetries = maxRetries.coerceIn(0, 5),
+        failureThreshold = failureThreshold.coerceIn(1, 20),
+        cooldownSeconds = cooldownSeconds.coerceIn(5, 600),
+        requestTimeoutSeconds = requestTimeoutSeconds.coerceIn(5, 600),
+        logLimit = logLimit.coerceIn(50, 20_000),
+        floatingBallSizeDp = floatingBallSizeDp.coerceIn(1, 96),
+    )
 }
 
 /**
@@ -70,10 +84,9 @@ class SettingsStore(
     /** 当前值的快照。 */
     fun current(): GatewaySettings = _settings.value
 
-    /** 写入一份完整设置。非法的端口会被拒，保持原值。 */
+    /** 写入一份完整设置；所有数值统一收敛到界面允许范围。 */
     fun update(value: GatewaySettings) {
-        // 界面已限范围，这里兜底：将来若有别的入口写入，也不会存下非法端口
-        val safe = if (value.isValid()) value else value.copy(port = current().port)
+        val safe = value.sanitized()
         prefs.edit().apply {
             putInt(K_PORT, safe.port)
             putBoolean(K_ALLOW_LAN, safe.allowLan)
@@ -85,7 +98,7 @@ class SettingsStore(
             putInt(K_LOG_LIMIT, safe.logLimit)
             putBoolean(K_AUTO_START, safe.autoStart)
             putBoolean(K_FLOATING, safe.showFloatingBall)
-            putInt(K_FLOATING_SIZE, value.floatingBallSizeDp)
+            putInt(K_FLOATING_SIZE, safe.floatingBallSizeDp)
             putBoolean(K_STRIP_FP, safe.stripClientFingerprint)
         }.apply()
         _settings.value = safe
@@ -117,7 +130,7 @@ class SettingsStore(
             showFloatingBall = prefs.getBoolean(K_FLOATING, d.showFloatingBall),
             floatingBallSizeDp = prefs.getInt(K_FLOATING_SIZE, d.floatingBallSizeDp),
             stripClientFingerprint = prefs.getBoolean(K_STRIP_FP, d.stripClientFingerprint),
-        )
+        ).sanitized()
     }
 
     private companion object {
