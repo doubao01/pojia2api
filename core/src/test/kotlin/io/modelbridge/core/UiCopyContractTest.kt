@@ -150,6 +150,8 @@ class UiCopyContractTest {
         val configTransfer = File(root, "app/src/main/kotlin/io/modelbridge/app/ConfigTransfer.kt").readText()
         assertTrue(configTransfer.contains("fun exportKeys(settings: GatewaySettings): JsonArray"))
         assertTrue(configTransfer.contains("root.containsKey(\"upstreams\")"))
+        assertTrue(configTransfer.contains("AccountArchive.parseLegacyUpstream"))
+        assertTrue(configTransfer.contains("AccountArchive.parseLegacyProfile"))
         assertTrue(configTransfer.contains("\"keys\""))
         assertTrue(homeLayout.contains("accessKeySummary"))
         assertTrue(homeLayout.contains("已启用校验"))

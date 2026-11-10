@@ -54,6 +54,47 @@ object AccountArchive {
         return accounts
     }
 
+    /** 3.10.0 整包配置的 upstreams 项转成自定义中转站账号，保留首个可用 API Key。 */
+    fun parseLegacyUpstream(element: JsonElement): Account? {
+        val obj = element as? JsonObject ?: return null
+        val baseUrl = obj.string("baseUrl", "base_url")
+        if (baseUrl.isBlank()) return null
+        val id = obj.string("id").ifBlank { "upstream-${UUID.randomUUID()}" }
+        val name = obj.string("name").ifBlank { id }
+        val apiKey = obj.string("apiKey", "api_key").ifBlank {
+            (obj["apiKeys"] as? JsonArray)
+                ?.firstNotNullOfOrNull { (it as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) }
+                .orEmpty()
+        }
+        return Account(
+            id = id,
+            providerId = "custom",
+            label = name,
+            enabled = obj.boolean("enabled", default = true),
+            credential = if (apiKey.isBlank()) Credential.None else Credential.ApiKey(apiKey),
+            baseUrl = baseUrl,
+            priority = obj.long("priority").toInt(),
+            fixedPolicyId = obj.string("profileId", "profile_id").takeIf { it.isNotBlank() },
+        )
+    }
+
+    /** 整包配置中未加密的 profiles 直接转成策略；加密正文保持原样但不注入。 */
+    fun parseLegacyProfile(element: JsonElement): io.modelbridge.core.policy.Policy? {
+        val obj = element as? JsonObject ?: return null
+        val id = obj.string("id")
+        val name = obj.string("name").ifBlank { id }
+        val instruction = obj.string("instruction")
+        if (id.isBlank() || instruction.startsWith("p1:")) return null
+        return io.modelbridge.core.policy.Policy(
+            id = id,
+            name = name,
+            models = obj.stringSet("models").toList(),
+            instruction = instruction,
+            builtin = obj.boolean("builtin", default = false),
+            enabled = obj.boolean("enabled", default = true),
+        )
+    }
+
     fun export(accounts: List<Account>): String =
         JsonArray(accounts.map(::exportAccount)).toString()
 

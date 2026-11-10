@@ -1,8 +1,10 @@
 package io.modelbridge.core
 
 import io.modelbridge.spi.Credential
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -135,6 +137,35 @@ class AccountArchiveTest {
         assertEquals("http://127.0.0.1:8080/v1", parsed.baseUrl)
         assertEquals(Credential.None, parsed.credential)
         assertTrue(parsed.enabled)
+    }
+
+    @Test
+    fun `legacy upstream and unencrypted profile map to ModelBridge objects`() {
+        val json = Json
+        val upstream = json.parseToJsonElement(
+            """{"id":"u1","name":"本地网关","baseUrl":"http://127.0.0.1:8080/v1","apiKey":"","apiKeys":["key-a","key-b"],"enabled":false,"priority":3,"profileId":"p1"}""",
+        )
+        val plainProfile = json.parseToJsonElement(
+            """{"id":"p1","name":"测试","models":["demo"],"instruction":"rule","enabled":true}""",
+        )
+        val encryptedProfile = json.parseToJsonElement(
+            """{"id":"p2","name":"加密","instruction":"p1:iv:cipher"}""",
+        )
+
+        val account = AccountArchive.parseLegacyUpstream(upstream)!!
+        val policy = AccountArchive.parseLegacyProfile(plainProfile)!!
+
+        assertEquals("custom", account.providerId)
+        assertEquals("u1", account.id)
+        assertEquals("本地网关", account.label)
+        assertEquals("http://127.0.0.1:8080/v1", account.baseUrl)
+        assertEquals(Credential.ApiKey("key-a"), account.credential)
+        assertFalse(account.enabled)
+        assertEquals(3, account.priority)
+        assertEquals("p1", account.fixedPolicyId)
+        assertEquals("rule", policy.instruction)
+        assertEquals(listOf("demo"), policy.models)
+        assertNull(AccountArchive.parseLegacyProfile(encryptedProfile))
     }
 
     @Test

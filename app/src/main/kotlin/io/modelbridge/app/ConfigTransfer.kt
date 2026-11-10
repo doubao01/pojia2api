@@ -141,11 +141,11 @@ class ConfigTransfer(private val context: Context) {
                 accessKey = enabledSecrets.firstOrNull().orEmpty(),
                 extraAccessKeys = enabledSecrets.drop(1),
             )
-            val accounts = (root["accounts"] as? JsonArray)
-                ?.let { AccountArchive.parseAccounts(it.toString()) }
+            val accounts = (root["upstreams"] as? JsonArray)
+                ?.mapNotNull { AccountArchive.parseLegacyUpstream(it) }
                 .orEmpty()
-            val policies = (root["policies"] as? JsonArray)
-                ?.let { element -> runCatching { JSON.decodeFromJsonElement<List<io.modelbridge.core.policy.Policy>>(element) }.getOrNull() }
+            val policies = (root["profiles"] as? JsonArray)
+                ?.mapNotNull { AccountArchive.parseLegacyProfile(it) }
                 .orEmpty()
             return ConfigBundle(
                 settings = settings,
