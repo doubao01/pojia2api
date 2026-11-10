@@ -26,7 +26,7 @@
 | WebView Cookie 登录 | `WebLoginDialog` 启用 JavaScript/DOM Storage，显式放开第三方 Cookie，登录完成后 `flush()` 并按主机与 https 域名读取 Cookie，保存为 `Credential.Cookies`；按钮/错误提示按 3.10.0 文案对齐 | `UiCopyContractTest`、CI APK；真实站点登录未验证 |
 | Qoder/CodeBuddy 设备授权 | `DeviceLoginDialog` + `QoderDeviceAuth` / `WorkBuddyDeviceAuth` 轮询、取消、OAuth 元数据保存 | 41 个设备授权契约测试、CI APK；真实授权未验证 |
 | Loomy 手机验证码 | `LoomySmsAuth` 两步 sendCode/checkCode 与 `LoomySmsDialog`；签名材料显式注入；登录成功保存 14 天会话有效期 | 5 个协议测试、`CredentialExpiryTest`、CI APK；生产签名材料未注入 |
-| 手动添加、导入/导出账号 | `AccountEditDialog` 与 `AccountArchive`；兼容原版数组、WorkBuddy 单对象、secret 对象/字符串 | `AccountArchiveTest`、CI APK；用户已确认修正版导入文件不再报错 |
+| 手动添加、导入/导出账号 | `AccountEditDialog` 与 `AccountArchive`；兼容原版数组、WorkBuddy 单对象、secret 对象/字符串；昵称字段提示 `@上游昵称` 模型名后缀，删除账号确认按 3.10.0 提示本地凭证一并清除 | `AccountArchiveTest`、`UiCopyContractTest`、CI APK；用户已确认修正版导入文件不再报错 |
 | 连通性检测、端口扫描 | `ViewModels.checkAccount` 与本机端口扫描 | CI APK |
 | 首页统计、缓存命中率、token | `HomeScreen` 按 3.9.3 两列 key/value 展示累计请求/成功率、输入/输出 token、缓存命中率/平均耗时；成功/失败/可用模型放状态卡副标题；复制地址与「已复制」反馈保留 | `UiCopyContractTest`、CI APK；真机像素核对未验证 |
 | 首页复制地址、管理入口 | 复制本机/局域网地址；账号、策略、任务/额度入口 | CI APK |

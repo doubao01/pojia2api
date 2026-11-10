@@ -434,7 +434,7 @@ private fun AccountRow(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("删除账号", fontSize = 17.sp) },
-            text = { Text("确定删除「${account.label}」？此操作不可撤销。", fontSize = 14.sp) },
+            text = { Text("确定删除「${account.label}」？本地凭证将一并清除。", fontSize = 14.sp) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false

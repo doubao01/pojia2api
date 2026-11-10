@@ -85,9 +85,15 @@ fun AccountEditDialog(
                     value = label,
                     onValueChange = { label = it },
                     singleLine = true,
-                    label = { Text("备注名", fontSize = 12.sp) },
+                    label = { Text("昵称", fontSize = 12.sp) },
                     placeholder = { Text(provider.displayName, fontSize = 13.sp) },
                     modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "昵称（模型名后缀，如 猫爪 → deepseek@猫爪）",
+                    fontSize = 11.sp,
+                    color = AppStyle.SubtitleText,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
 
                 when (provider.authKind) {
