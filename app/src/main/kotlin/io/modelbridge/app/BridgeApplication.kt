@@ -20,6 +20,9 @@ import io.modelbridge.providers.auth.LoomySmsAuth
 import io.modelbridge.providers.auth.QoderClientIds
 import io.modelbridge.providers.auth.QoderDeviceAuth
 import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
+import io.modelbridge.providers.account.AccountServiceRegistry
+import io.modelbridge.providers.account.QoderAccountService
+import io.modelbridge.providers.account.WorkBuddyAccountService
 import io.modelbridge.spi.HttpClient
 import io.modelbridge.spi.Provider
 import io.modelbridge.spi.ProviderContext
@@ -104,6 +107,14 @@ class AppContainer(private val app: Application) {
     val credentialRefresher = AccountCredentialRefresher(
         accounts = accountStore,
         clients = deviceAuthClients,
+    )
+
+    /** 已按 3.9.3 静态契约接入的供应商账号业务；未接入的供应商由注册表明确返回不支持。 */
+    val accountServices = AccountServiceRegistry(
+        services = listOf(
+            WorkBuddyAccountService(httpClient),
+            QoderAccountService(httpClient),
+        ),
     )
 
     /** 策略仓储，持久化在 SharedPreferences，重启不丢。 */

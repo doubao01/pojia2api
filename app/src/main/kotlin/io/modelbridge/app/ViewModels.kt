@@ -19,6 +19,11 @@ import io.modelbridge.providers.auth.LoomySmsChallenge
 import io.modelbridge.providers.auth.QoderClientIds
 import io.modelbridge.providers.auth.QoderDeviceAuth
 import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
+import io.modelbridge.providers.account.AccountActionResult
+import io.modelbridge.providers.account.AccountCapability
+import io.modelbridge.providers.account.AccountQuota
+import io.modelbridge.providers.account.ProviderTask
+import io.modelbridge.providers.account.ProviderTaskList
 import io.modelbridge.spi.Credential
 import io.modelbridge.spi.ModelInfo
 import io.modelbridge.spi.Provider
@@ -174,9 +179,82 @@ class ViewModels(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    data class TaskQuotaUiState(
+        val busy: Boolean = false,
+        val quotas: Map<String, AccountQuota> = emptyMap(),
+        val tasks: List<ProviderTask> = emptyList(),
+        val tasksError: String = "",
+        val lastResult: AccountActionResult? = null,
+        val lastRefreshedAtMillis: Long = 0,
+    )
+
+    private val _taskQuota = MutableStateFlow(TaskQuotaUiState())
+    val taskQuota: StateFlow<TaskQuotaUiState> = _taskQuota.asStateFlow()
+
     init {
         refreshModels()
+        refreshTaskQuota()
     }
+
+    /** 登录/导入账号后刷新一次任务与额度；无可用账号时明确提示。 */
+    fun refreshTaskQuota() {
+        if (_taskQuota.value.busy) return
+        _taskQuota.value = _taskQuota.value.copy(busy = true)
+        viewModelScope.launch(Dispatchers.IO) {
+            val accounts = container.accountStore.all().filter { it.enabled }
+            val quotas = accounts.mapNotNull { account ->
+                val quota = container.accountServices.credit(account)
+                account.id to quota
+            }.toMap()
+            val tasks = accounts.firstNotNullOfOrNull { account ->
+                val result = container.accountServices.tasks(account)
+                result.takeIf { it.tasks.isNotEmpty() }
+            } ?: ProviderTaskList(error = "没有可显示的任务")
+            _taskQuota.value = _taskQuota.value.copy(
+                busy = false,
+                quotas = quotas,
+                tasks = tasks.tasks,
+                tasksError = tasks.error,
+                lastRefreshedAtMillis = System.currentTimeMillis(),
+            )
+        }
+    }
+
+    private fun runAccountAction(capability: AccountCapability) {
+        if (_taskQuota.value.busy) return
+        _taskQuota.value = _taskQuota.value.copy(busy = true)
+        viewModelScope.launch(Dispatchers.IO) {
+            val accounts = container.accountStore.all().filter { it.enabled }
+            val results = accounts.map { account ->
+                account.label to when (capability) {
+                    AccountCapability.CheckIn -> container.accountServices.checkIn(account)
+                    AccountCapability.Tasks -> container.accountServices.claimTasks(account)
+                    else -> AccountActionResult(false, "该操作不支持", unsupported = true)
+                }
+            }
+            val actionable = results.filterNot { it.second.unsupported }
+            val success = actionable.count { it.second.ok }
+            val failed = actionable.count { !it.second.ok }
+            val skipped = results.count { it.second.unsupported }
+            val summary = buildList {
+                if (success > 0) add("成功 $success 个")
+                if (failed > 0) add("失败 $failed 个")
+                if (skipped > 0) add("跳过 $skipped 个")
+            }.joinToString("；").ifBlank { "没有可执行的账号" }
+            val details = actionable.joinToString("；") { (label, result) ->
+                "$label：${result.message.ifBlank { if (result.ok) "已完成" else "未知原因" }}"
+            }
+            val result = AccountActionResult(
+                ok = success > 0,
+                message = listOf(summary, details).filter { it.isNotBlank() }.joinToString("；"),
+            )
+            _taskQuota.value = _taskQuota.value.copy(busy = false, lastResult = result)
+            toast(result.message)
+        }
+    }
+
+    fun checkInAllAccounts() = runAccountAction(AccountCapability.CheckIn)
+    fun claimAllAccountTasks() = runAccountAction(AccountCapability.Tasks)
 
     // ---------- 模型 ----------
 
