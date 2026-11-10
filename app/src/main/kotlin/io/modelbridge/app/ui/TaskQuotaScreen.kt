@@ -11,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -165,6 +167,9 @@ private fun AccountCenter(
     checks: Map<String, String>,
     state: ViewModels.TaskQuotaUiState,
 ) {
+    val expanded = remember { mutableStateMapOf<String, Boolean>() }
+    val grouped = accounts.groupBy { it.providerId }.toList()
+
     Text("账号管理", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = AppStyle.TitleText)
     Text(
         "每日自动检测一次账号可用性",
@@ -185,59 +190,23 @@ private fun AccountCenter(
             RowDivider()
             TaskRow("可用积分", "—", "还没有登录账号")
         } else {
-            accounts.forEachIndexed { index, account ->
+            grouped.forEach { (providerId, providerAccounts) ->
                 RowDivider()
-                val credit = credits[account.id]
-                val quota = credit?.quota
-                val canCredit = vms.supportsAccountCredit(account.providerId)
-                val canCheckIn = vms.supportsAccountCheckIn(account.providerId)
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
-                    Text(account.label.ifBlank { account.id }, fontSize = 14.sp, color = AppStyle.BodyText)
-                    Text(
-                        text = buildList {
-                            add(account.providerId)
-                            val region = AccountStatusFormat.regionLabel(account.authRegion, account.authDomain)
-                            if (region.isNotBlank()) add(region)
-                            add(AccountStatusFormat.enabledLabel(account.enabled))
-                            AccountStatusFormat.expiryLabel(
-                                account.authExpiresAtMillis,
-                                System.currentTimeMillis(),
-                            ).takeIf { it.isNotBlank() }?.let { add(it) }
-                            if (canCredit) {
-                                add(
-                                    when {
-                                        credit?.busy == true -> "可用积分：查询中…"
-                                        quota?.known == true -> "可用积分：${quota.balance}"
-                                        quota?.error?.isNotBlank() == true -> "可用积分：查询失败"
-                                        else -> "可用积分：…"
-                                    },
-                                )
-                            }
-                            if (canCheckIn) {
-                                add(if (credit?.checkedInToday == true) "今日已签到" else "今日未签到")
-                            }
-                            if (!canCredit && !canCheckIn) add("未接入积分或签到")
-                            checks[account.id]?.let { add("连通：$it") }
-                            quota?.detail?.takeIf { it.isNotBlank() }?.let { add("额度：$it") }
-                            quota?.error?.takeIf { it.isNotBlank() }?.let { add(it) }
-                        }.joinToString(" · "),
-                        fontSize = 11.sp,
-                        color = AppStyle.SubtitleText,
-                        modifier = Modifier.padding(top = 3.dp),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                        if (canCredit) {
-                            TextButton(
-                                enabled = credit?.busy != true,
-                                onClick = { vms.refreshAccountCredit(account.id) },
-                            ) { Text("刷新积分", fontSize = 12.sp) }
-                        }
-                        if (canCheckIn) {
-                            TextButton(
-                                enabled = credit?.busy != true,
-                                onClick = { vms.checkInAccount(account.id) },
-                            ) { Text("签到", fontSize = 12.sp) }
-                        }
+                val isExpanded = expanded[providerId] ?: true
+                ActionRow(
+                    label = vms.providerDisplayName(providerId),
+                    value = if (isExpanded) "收起" else "展开",
+                    hint = "${providerAccounts.size} 个账号",
+                    onClick = { expanded[providerId] = !isExpanded },
+                )
+                if (isExpanded) {
+                    providerAccounts.forEach { account ->
+                        AccountDetails(
+                            vms = vms,
+                            account = account,
+                            credit = credits[account.id],
+                            check = checks[account.id],
+                        )
                     }
                 }
             }
@@ -246,6 +215,67 @@ private fun AccountCenter(
 
     GroupTitle("额度汇总")
     SettingsGroup { QuotaSummary(state) }
+}
+
+@Composable
+private fun AccountDetails(
+    vms: ViewModels,
+    account: Account,
+    credit: ViewModels.AccountCreditUiState?,
+    check: String?,
+) {
+    val quota = credit?.quota
+    val canCredit = vms.supportsAccountCredit(account.providerId)
+    val canCheckIn = vms.supportsAccountCheckIn(account.providerId)
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Text(account.label.ifBlank { account.id }, fontSize = 14.sp, color = AppStyle.BodyText)
+        Text(
+            text = buildList {
+                add(account.providerId)
+                val region = AccountStatusFormat.regionLabel(account.authRegion, account.authDomain)
+                if (region.isNotBlank()) add(region)
+                add(AccountStatusFormat.enabledLabel(account.enabled))
+                AccountStatusFormat.expiryLabel(
+                    account.authExpiresAtMillis,
+                    System.currentTimeMillis(),
+                ).takeIf { it.isNotBlank() }?.let { add(it) }
+                if (canCredit) {
+                    add(
+                        when {
+                            credit?.busy == true -> "可用积分：查询中…"
+                            quota?.known == true -> "可用积分：${quota.balance}"
+                            quota?.error?.isNotBlank() == true -> "可用积分：查询失败"
+                            else -> "可用积分：…"
+                        },
+                    )
+                }
+                if (canCheckIn) {
+                    add(if (credit?.checkedInToday == true) "今日已签到" else "今日未签到")
+                }
+                if (!canCredit && !canCheckIn) add("未接入积分或签到")
+                check?.let { add("连通：$it") }
+                quota?.detail?.takeIf { it.isNotBlank() }?.let { add("额度：$it") }
+                quota?.error?.takeIf { it.isNotBlank() }?.let { add(it) }
+            }.joinToString(" · "),
+            fontSize = 11.sp,
+            color = AppStyle.SubtitleText,
+            modifier = Modifier.padding(top = 3.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            if (canCredit) {
+                TextButton(
+                    enabled = credit?.busy != true,
+                    onClick = { vms.refreshAccountCredit(account.id) },
+                ) { Text("刷新积分", fontSize = 12.sp) }
+            }
+            if (canCheckIn) {
+                TextButton(
+                    enabled = credit?.busy != true,
+                    onClick = { vms.checkInAccount(account.id) },
+                ) { Text("签到", fontSize = 12.sp) }
+            }
+        }
+    }
 }
 
 @Composable

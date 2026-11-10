@@ -80,6 +80,11 @@ class UiCopyContractTest {
         assertTrue(statusFormat.contains("天后到期，自动续期…"))
         assertTrue(File(root, "app/src/main/kotlin/io/modelbridge/app/ui/AccountsScreen.kt").readText()
             .contains("AccountStatusFormat.expiryLabel"))
+        val taskQuota = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/TaskQuotaScreen.kt").readText()
+        assertTrue(taskQuota.contains("\"收起\""))
+        assertTrue(taskQuota.contains("\"展开\""))
+        assertTrue(taskQuota.contains("个账号"))
+        assertTrue(taskQuota.contains("groupBy { it.providerId }"))
     }
 
     private fun findProjectRoot(): File {

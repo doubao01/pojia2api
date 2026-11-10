@@ -231,6 +231,9 @@ class ViewModels(
     fun supportsAccountCredit(providerId: String): Boolean =
         container.accountServices.supports(providerId, AccountCapability.CreditRefresh)
 
+    fun providerDisplayName(providerId: String): String =
+        registry.find(providerId)?.displayName ?: providerId
+
     fun supportsAccountCheckIn(providerId: String): Boolean =
         container.accountServices.supports(providerId, AccountCapability.CheckIn)
 
