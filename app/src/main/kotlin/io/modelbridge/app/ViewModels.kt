@@ -8,6 +8,7 @@ import io.modelbridge.app.service.FloatingBallService
 import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
+import io.modelbridge.core.AccountCheckStatus
 import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.core.ScannedGateway
 import io.modelbridge.core.ScannedGatewayParser
@@ -740,7 +741,7 @@ class ViewModels(
                 val cached = decision.cached
                 if (!decision.due && cached != null) {
                     _checks.value = _checks.value + (account.id to cached.message.ifBlank {
-                        if (cached.reachable) "可用" else "不可用"
+                        AccountCheckStatus.cachedStatus(cached.reachable)
                     })
                     return@forEach
                 }
@@ -748,7 +749,7 @@ class ViewModels(
                 healthSchedule.record(
                     account.providerId,
                     account.id,
-                    reachable = result == "可用",
+                    reachable = AccountCheckStatus.isReachable(result),
                     message = result,
                 )
                 _checks.value = _checks.value + (account.id to result)
@@ -760,13 +761,13 @@ class ViewModels(
      * 检测单个账号的连通性；手动点击始终重新检测并刷新当日缓存。
      */
     fun checkAccount(account: Account) {
-        _checks.value = _checks.value + (account.id to "检测中…")
+        _checks.value = _checks.value + (account.id to AccountCheckStatus.PENDING)
         viewModelScope.launch(Dispatchers.IO) {
             val result = validateAccount(account)
             healthSchedule.record(
                 account.providerId,
                 account.id,
-                reachable = result == "可用",
+                reachable = AccountCheckStatus.isReachable(result),
                 message = result,
             )
             _checks.value = _checks.value + (account.id to result)
@@ -781,16 +782,16 @@ class ViewModels(
             return
         }
         toast("正在检测 ${relays.size} 个上游…")
-        _checks.value = _checks.value + relays.associate { it.id to "检测中…" }
+        _checks.value = _checks.value + relays.associate { it.id to AccountCheckStatus.PENDING }
         viewModelScope.launch(Dispatchers.IO) {
             var reachable = 0
             relays.forEach { account ->
                 val result = validateAccount(account)
-                if (result == "可用") reachable++
+                if (AccountCheckStatus.isReachable(result)) reachable++
                 healthSchedule.record(
                     account.providerId,
                     account.id,
-                    reachable = result == "可用",
+                    reachable = AccountCheckStatus.isReachable(result),
                     message = result,
                 )
                 _checks.value = _checks.value + (account.id to result)
@@ -802,17 +803,20 @@ class ViewModels(
     private suspend fun validateAccount(account: Account): String {
         container.credentialRefresher.refreshAccount(account.id, ignoreBackoff = true)
         val current = container.accountStore.find(account.id) ?: account
-        val provider = registry.find(current.providerId) ?: return "供应商未找到"
+        val provider = registry.find(current.providerId)
+            ?: return AccountCheckStatus.failure("供应商未找到")
         return runCatching {
             provider.validate(contextFor(provider, current))
         }.fold(
             onSuccess = { result ->
                 when (result) {
-                    is ValidationResult.Valid -> "可用"
-                    is ValidationResult.Invalid -> "失败：${result.reason}"
+                    is ValidationResult.Valid -> AccountCheckStatus.OK
+                    is ValidationResult.Invalid -> AccountCheckStatus.failure(result.reason)
                 }
             },
-            onFailure = { "失败：${it.message ?: it::class.java.simpleName}" },
+            onFailure = {
+                AccountCheckStatus.failure(it.message ?: it::class.java.simpleName)
+            },
         )
     }
 

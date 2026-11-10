@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.modelbridge.app.ViewModels
 import io.modelbridge.core.Account
+import io.modelbridge.core.AccountCheckStatus
 import io.modelbridge.core.AccountStatusFormat
 import io.modelbridge.spi.AuthKind
 import io.modelbridge.spi.Credential
@@ -467,8 +468,8 @@ private fun AccountRow(
                     fontSize = 11.sp,
                     color = when {
                         checkResult == null -> AppStyle.SubtitleText
-                        checkResult == "可用" -> AppStyle.BodyText
-                        checkResult == "检测中…" -> AppStyle.SubtitleText
+                        AccountCheckStatus.isReachable(checkResult) -> AppStyle.BodyText
+                        checkResult == AccountCheckStatus.PENDING -> AppStyle.SubtitleText
                         else -> AppStyle.Accent
                     },
                     modifier = Modifier.padding(top = 1.dp),
@@ -480,7 +481,7 @@ private fun AccountRow(
         Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             TextButton(onClick = onCheck) {
                 Text(
-                    if (checkResult == "检测中…") "正在检测" else "检测连通性",
+                    if (checkResult == AccountCheckStatus.PENDING) "正在检测" else "检测连通性",
                     fontSize = 12.sp,
                 )
             }
