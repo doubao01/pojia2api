@@ -715,8 +715,8 @@ class ViewModels(
             healthSchedule.prune()
             container.accountStore.all().filter { it.enabled }.forEach { account ->
                 val decision = healthSchedule.evaluate(account.providerId, account.id)
-                if (!decision.due && decision.cached != null) {
-                    val cached = decision.cached
+                val cached = decision.cached
+                if (!decision.due && cached != null) {
                     _checks.value = _checks.value + (account.id to cached.message.ifBlank {
                         if (cached.reachable) "可用" else "不可用"
                     })
