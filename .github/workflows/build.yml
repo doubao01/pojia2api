@@ -89,6 +89,8 @@ jobs:
           MODELBRIDGE_LOOMY_APP_ID: ${{ secrets.MODELBRIDGE_LOOMY_APP_ID }}
           MODELBRIDGE_LOOMY_ACCESS_KEY: ${{ secrets.MODELBRIDGE_LOOMY_ACCESS_KEY }}
           MODELBRIDGE_LOOMY_SECRET: ${{ secrets.MODELBRIDGE_LOOMY_SECRET }}
+          MODELBRIDGE_QODER_CLIENT_ID_CN: ${{ secrets.MODELBRIDGE_QODER_CLIENT_ID_CN }}
+          MODELBRIDGE_QODER_CLIENT_ID_GLOBAL: ${{ secrets.MODELBRIDGE_QODER_CLIENT_ID_GLOBAL }}
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: 上传 APK

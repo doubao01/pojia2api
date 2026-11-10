@@ -221,13 +221,15 @@ class ViewModels(
         deviceLoginJob?.cancel()
         deviceLoginJob = viewModelScope.launch(Dispatchers.IO) {
             val client: DeviceAuthClient = when (providerId) {
-                "qoder" -> QoderDeviceAuth(
-                    container.httpClient,
-                    QoderClientIds(
-                        cn = "00000000-0000-0000-0000-000000000000",
-                        global = "00000000-0000-0000-0000-000000000000",
-                    ),
-                )
+                "qoder" -> {
+                    val cn = BuildConfig.QODER_CLIENT_ID_CN
+                    val global = BuildConfig.QODER_CLIENT_ID_GLOBAL
+                    val selected = if (region == "global") global else cn
+                    if (selected.isBlank()) {
+                        throw IllegalStateException("Qoder 客户端标识未配置，请通过构建环境注入")
+                    }
+                    QoderDeviceAuth(container.httpClient, QoderClientIds(cn = cn, global = global))
+                }
                 else -> WorkBuddyDeviceAuth(container.httpClient)
             }
             deviceLoginClient = client

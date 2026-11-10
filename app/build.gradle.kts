@@ -33,16 +33,18 @@ android {
     // Loomy 短信签名材料只能由构建环境注入；公开源码/CI 不保存任何生产秘密。
     // 本机可用 ~/.gradle/gradle.properties 或环境变量提供：
     // MODELBRIDGE_LOOMY_APP_ID / ACCESS_KEY / SECRET。
-    fun loomy(name: String): String =
-        (providers.gradleProperty("MODELBRIDGE_LOOMY_$name").orNull
-            ?: providers.environmentVariable("MODELBRIDGE_LOOMY_$name").orNull
+    fun injectedProperty(name: String): String =
+        (providers.gradleProperty(name).orNull
+            ?: providers.environmentVariable(name).orNull
             ?: "").trim()
 
     listOf("debug", "release").forEach { type ->
         buildTypes.getByName(type) {
-            buildConfigField("String", "LOOMY_APP_ID", "\"" + loomy("APP_ID") + "\"")
-            buildConfigField("String", "LOOMY_ACCESS_KEY", "\"" + loomy("ACCESS_KEY") + "\"")
-            buildConfigField("String", "LOOMY_SECRET", "\"" + loomy("SECRET") + "\"")
+            buildConfigField("String", "LOOMY_APP_ID", "\"" + injectedProperty("MODELBRIDGE_LOOMY_APP_ID") + "\"")
+            buildConfigField("String", "LOOMY_ACCESS_KEY", "\"" + injectedProperty("MODELBRIDGE_LOOMY_ACCESS_KEY") + "\"")
+            buildConfigField("String", "LOOMY_SECRET", "\"" + injectedProperty("MODELBRIDGE_LOOMY_SECRET") + "\"")
+            buildConfigField("String", "QODER_CLIENT_ID_CN", "\"" + injectedProperty("MODELBRIDGE_QODER_CLIENT_ID_CN") + "\"")
+            buildConfigField("String", "QODER_CLIENT_ID_GLOBAL", "\"" + injectedProperty("MODELBRIDGE_QODER_CLIENT_ID_GLOBAL") + "\"")
         }
     }
 
