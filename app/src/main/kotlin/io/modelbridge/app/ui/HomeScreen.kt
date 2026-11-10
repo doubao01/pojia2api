@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import android.widget.Toast
 import io.modelbridge.app.ViewModels
 import io.modelbridge.core.LanAddresses
+import io.modelbridge.core.StatDisplay
 
 /**
  * 首页：网关概览。
@@ -82,19 +83,19 @@ fun HomeScreen(
         InfoCard {
             StatPairRow(
                 leftLabel = "累计请求",
-                leftValue = total.toString(),
+                leftValue = StatDisplay.compact(total),
                 rightLabel = "成功率",
-                rightValue = "%.1f%%".format(successRate),
+                rightValue = StatDisplay.percent(successRate),
             )
             StatPairRow(
                 leftLabel = "输入 token",
-                leftValue = tokenIn.toString(),
+                leftValue = StatDisplay.compact(tokenIn),
                 rightLabel = "输出 token",
-                rightValue = tokenOut.toString(),
+                rightValue = StatDisplay.compact(tokenOut),
             )
             StatPairRow(
                 leftLabel = "缓存命中率",
-                leftValue = hitRate?.let { "%.1f%%".format(it) } ?: "—",
+                leftValue = StatDisplay.percent(hitRate),
                 rightLabel = "平均耗时",
                 rightValue = if (avgCost > 0) "${avgCost}ms" else "—",
             )
@@ -197,8 +198,8 @@ private fun StatusCard(
                 text = buildString {
                     append(if (running) "监听端口 $port" else "点击下方按钮启动")
                     append(" · 可用模型 $models")
-                    append(" · 成功 $success")
-                    append(" · 失败 $failed")
+                    append(" · 成功 ${StatDisplay.compact(success)}")
+                    append(" · 失败 ${StatDisplay.compact(failed)}")
                 },
                 fontSize = 13.sp,
                 color = AppStyle.SubtitleText,
