@@ -192,10 +192,13 @@ class Gateway(
         val now = clock() / 1000
 
         val response = ModelListResponse(
-            data = snapshot.map(::toModelObject).map { obj ->
-                if (config.publicModelPrefix.isEmpty()) obj
-                else obj.copy(id = config.publicModelPrefix + obj.id)
-            },
+            data = snapshot
+                .distinctBy { it.id }
+                .map(::toModelObject)
+                .map { obj ->
+                    if (config.publicModelPrefix.isEmpty()) obj
+                    else obj.copy(id = config.publicModelPrefix + obj.id)
+                },
         )
 
         return HttpResult.Buffered(

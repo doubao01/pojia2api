@@ -5,6 +5,9 @@ import io.modelbridge.core.http.ServerRequest
 import io.modelbridge.spi.Credential
 import io.modelbridge.spi.ModelInfo
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -51,6 +54,30 @@ class UpstreamHintRoutingTest {
 
         assertEquals(2, result.models.size)
         assertEquals(setOf("alpha", "beta"), result.models.map { it.providerId }.toSet())
+    }
+
+    @Test
+    fun `models endpoint deduplicates ids exposed to clients`() = runBlocking {
+        val fixture = Fixture()
+        fixture.gateway.refreshCatalog()
+
+        val response = fixture.gateway.handle(
+            ServerRequest(
+                method = "GET",
+                path = "/v1/models",
+                query = "",
+                version = "HTTP/1.1",
+                headers = emptyMap(),
+                body = ByteArray(0),
+            ),
+        ) as HttpResult.Buffered
+        val body = response.body.decodeToString()
+        val ids = kotlinx.serialization.json.Json.parseToJsonElement(body)
+            .jsonObject["data"]!!.jsonArray
+            .map { it.jsonObject["id"]!!.jsonPrimitive.content }
+
+        assertEquals(200, response.status)
+        assertEquals(listOf("demo-1"), ids)
     }
 
     @Test
