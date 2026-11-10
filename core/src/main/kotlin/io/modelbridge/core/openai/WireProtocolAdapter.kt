@@ -78,6 +78,14 @@ object WireProtocolAdapter {
             maxTokens = root.int("max_output_tokens", "max_tokens"),
             stream = root.boolean("stream"),
             jsonMode = root["text"] != null,
+            toolChoice = root["tool_choice"].toolChoice(),
+            extras = root.protocolExtras(
+                "reasoning_effort" to listOf("reasoning_effort"),
+                "context_window" to listOf("context_window"),
+                "parallel_tool_calls" to listOf("parallel_tool_calls"),
+                "top_k" to listOf("top_k"),
+                "metadata" to listOf("metadata"),
+            ) + reasoningEffort(root),
         )
     }
 
@@ -106,6 +114,13 @@ object WireProtocolAdapter {
             maxTokens = root.int("max_tokens", "max_output_tokens"),
             stop = root.stringList("stop_sequences"),
             stream = root.boolean("stream"),
+            toolChoice = root["tool_choice"].toolChoice(),
+            extras = root.protocolExtras(
+                "top_k" to listOf("top_k"),
+                "thinking" to listOf("thinking"),
+                "reasoning_effort" to listOf("reasoning_effort"),
+                "metadata" to listOf("metadata"),
+            ),
         )
     }
 
@@ -311,4 +326,36 @@ object WireProtocolAdapter {
 
     private fun JsonObject.stringList(key: String): List<String> =
         (this[key] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList()
+
+    /**
+     * 3.10.0 多协议扩展标量按 JSON 文本放进 extras；Provider 转发时再解析回原始类型。
+     * 已映射到 ChatRequest 顶层字段的 tools/tool_choice 不走这里。
+     */
+    private fun JsonObject.protocolExtras(
+        vararg fields: Pair<String, List<String>>,
+    ): Map<String, String> = buildMap {
+        fields.forEach { (target, aliases) ->
+            val value = aliases.asSequence().mapNotNull { this@protocolExtras[it] }.firstOrNull()
+            if (value != null) put(target, value.toString())
+        }
+    }
+
+    private fun reasoningEffort(root: JsonObject): Map<String, String> {
+        val reasoning = root["reasoning"] as? JsonObject ?: return emptyMap()
+        val effort = (reasoning["effort"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+            ?: return emptyMap()
+        return mapOf("reasoning_effort" to JsonPrimitive(effort).toString())
+    }
+
+    private fun JsonElement?.toolChoice(): String? = when (this) {
+        is JsonPrimitive -> contentOrNull?.takeIf { it.isNotBlank() }
+        is JsonObject -> (this["name"] ?: this["function"]).let { function ->
+            when (function) {
+                is JsonObject -> (function["name"] as? JsonPrimitive)?.contentOrNull
+                is JsonPrimitive -> function.contentOrNull
+                else -> null
+            }
+        }
+        else -> null
+    }
 }

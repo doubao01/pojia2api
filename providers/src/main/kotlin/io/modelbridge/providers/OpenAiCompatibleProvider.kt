@@ -264,6 +264,16 @@ abstract class OpenAiCompatibleProvider : Provider {
 
     /** 构造对话请求体。 */
     protected open fun buildRequestBody(request: ChatRequest): JsonObject = buildJsonObject {
+        // 多协议扩展字段先按原始 JSON 类型写入；下面显式字段会覆盖同名键。
+        val reserved = setOf(
+            "model", "messages", "stream", "temperature", "top_p", "max_tokens", "stop",
+            "tools", "tool_choice", "response_format",
+        )
+        request.extras.forEach { (key, raw) ->
+            if (key.isBlank() || key in reserved) return@forEach
+            val element = runCatching { json.parseToJsonElement(raw) }.getOrNull() ?: return@forEach
+            put(key, element)
+        }
         put("model", request.model)
         put("stream", request.stream)
         putJsonArray("messages") {
