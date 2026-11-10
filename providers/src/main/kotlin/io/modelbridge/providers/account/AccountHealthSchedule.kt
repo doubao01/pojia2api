@@ -48,7 +48,9 @@ class AccountHealthSchedule(
     /** 只保留今日记录，避免进程长期驻留时状态无限增长。 */
     fun prune(nowMillis: Long = clockMillis()): Int {
         val before = entries.size
-        entries.entries.removeIf { (_, value) -> !sameLocalDay(value.checkedAtMillis, nowMillis) }
+        val stale = entries.filterValues { value -> !sameLocalDay(value.checkedAtMillis, nowMillis) }
+            .keys.toList()
+        stale.forEach(entries::remove)
         return before - entries.size
     }
 
