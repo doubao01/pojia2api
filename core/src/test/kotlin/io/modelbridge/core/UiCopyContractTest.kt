@@ -33,6 +33,10 @@ class UiCopyContractTest {
         ).forEach { expected ->
             assertTrue(source.contains(expected), "Missing 3.10.0 UI copy: $expected")
         }
+
+        val settings = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/SettingsScreen.kt").readText()
+        assertTrue(settings.contains("统计已重置"))
+        assertTrue(settings.contains("已导入 "))
     }
 
     private fun findProjectRoot(): File {

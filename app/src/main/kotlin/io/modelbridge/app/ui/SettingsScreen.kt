@@ -171,6 +171,7 @@ fun SettingsScreen(vms: ViewModels) {
                         cfg.settings?.let { s -> vms.updateSettings { s } }
                         cfg.accounts?.let { vms.importAccounts(it, replace = true) }
                         cfg.policies?.let(vms::importPolicies)
+                        pendingMessage = "已导入 ${cfg.accounts?.size ?: 0} 个账号"
                     }
                 },
             )
@@ -181,16 +182,6 @@ fun SettingsScreen(vms: ViewModels) {
                 onClick = {
                     vms.runner.resetStats()
                     pendingMessage = "统计已重置"
-                },
-            )
-            RowDivider()
-            ActionRow(
-                label = "恢复默认设置",
-                hint = "端口、调度等全部回到默认值",
-                danger = true,
-                onClick = {
-                    vms.resetSettings()
-                    pendingMessage = "已恢复默认设置"
                 },
             )
         }
