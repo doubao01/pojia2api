@@ -21,12 +21,13 @@
   - 一键任务领取先请求礼包/补偿接口，再按成长任务状态领取或接取；只有上游 2xx 且返回可识别结果才计入成功。
   - 国内版与企业账号差异按原版规则处理；国际版与有企业 ID 的账号明确返回不支持。
 - `QoderAccountService`：查询套餐、加购、共享额度，保留原始 used / remaining / total 汇总；Qoder 签到涉及额外设备派生头和多个活动接口，静态伪代码条件存在歧义，本轮不冒充已实现。
+- `LoomyAccountService`：用已保存短信验证码 session 查询个人积分、团队积分、新人任务；任务完成按服务端 `alreadyCompleted` 区分「已完成」与「此前已完成」。固定版本头由宿主注入，不从原 APK 复制。
 - UI：`TaskQuotaScreen` 进入页面时刷新；按钮按供应商逐账号执行并汇总「成功/失败/跳过」；任务列表显示真实状态与奖励；额度按套餐/共享/加购/积分分类汇总；失败显示上游错误或「查询失败」，不用本地请求数和 token 用量伪造额度。
 
 ## 本地验证
 
-- `AccountServicesTest` 8 项：WorkBuddy 额度请求/字段、任务状态、签到成功与幂等、国际/企业账号、任务领取、Qoder 额度分类、未实现动作、上游失败隔离。
-- `./gradlew :core:test :providers:test --offline`：core 78、providers 62，失败 0。
+- `AccountServicesTest` 8 项、`LoomyAccountServiceTest` 4 项：WorkBuddy 额度请求/字段、任务状态、签到成功与幂等、国际/企业账号、任务领取、Qoder 额度分类、未实现动作、上游失败隔离；Loomy 积分汇总、任务映射、领取与失败状态。
+- `./gradlew :core:test :providers:test --offline`：core 78、providers 66，失败 0。
 - CI 负责 Android `:app:assembleDebug` 编译与打包；JVM 测试不覆盖 Android UI 渲染。
 
 ## 边界

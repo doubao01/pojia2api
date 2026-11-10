@@ -21,6 +21,7 @@ import io.modelbridge.providers.auth.QoderClientIds
 import io.modelbridge.providers.auth.QoderDeviceAuth
 import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
 import io.modelbridge.providers.account.AccountServiceRegistry
+import io.modelbridge.providers.account.LoomyAccountService
 import io.modelbridge.providers.account.QoderAccountService
 import io.modelbridge.providers.account.WorkBuddyAccountService
 import io.modelbridge.spi.HttpClient
@@ -114,6 +115,7 @@ class AppContainer(private val app: Application) {
         services = listOf(
             WorkBuddyAccountService(httpClient),
             QoderAccountService(httpClient),
+            LoomyAccountService(httpClient),
         ),
     )
 
