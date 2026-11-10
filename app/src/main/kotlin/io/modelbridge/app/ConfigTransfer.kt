@@ -4,8 +4,11 @@ import android.content.Context
 import android.net.Uri
 import io.modelbridge.app.prefs.GatewaySettings
 import io.modelbridge.core.Account
+import io.modelbridge.core.AccountArchive
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 /**
  * 配置的整包导出/导入，对应原版「我的 → 配置」里的
@@ -65,13 +68,8 @@ class ConfigTransfer(private val context: Context) {
      * 只导出账号，对应供应商页的「导出账号」。
      */
     fun exportAccounts(accounts: List<Account>): String {
-        val payload = ConfigBundle(
-            version = EXPORT_VERSION,
-            settings = null,
-            accounts = accounts,
-        )
         return runCatching {
-            pendingJson = JSON.encodeToString(ConfigBundle.serializer(), payload)
+            pendingJson = AccountArchive.export(accounts)
             val launch = ConfigTransferBridge.exportRequest
                 ?: return "保存界面未就绪，请重试"
             launch()
@@ -86,9 +84,7 @@ class ConfigTransfer(private val context: Context) {
      */
     fun importAccounts(onLoaded: (List<Account>) -> Unit): String {
         return runCatching {
-            pendingImport = { bundle ->
-                bundle.accounts?.let(onLoaded)
-            }
+            pendingImport = { bundle -> onLoaded(bundle.accounts.orEmpty()) }
             val launch = ConfigTransferBridge.importRequest
                 ?: return "文件选择器未就绪，请重试"
             launch()
@@ -113,9 +109,17 @@ class ConfigTransfer(private val context: Context) {
         @Volatile
         var pendingImport: ((ConfigBundle) -> Unit)? = null
 
-        /** 解析导入的内容。 */
+        /** 解析导入的内容：兼容整包配置、原版账号数组和单账号对象。 */
         fun parse(raw: String): ConfigBundle? = runCatching {
-            JSON.decodeFromString<ConfigBundle>(raw)
+            val root = JSON.parseToJsonElement(raw)
+            val containsConfigFields = root is JsonObject &&
+                (root.containsKey("settings") || root.containsKey("policies") ||
+                    root["version"] != null)
+            if (containsConfigFields) {
+                JSON.decodeFromJsonElement<ConfigBundle>(root)
+            } else {
+                ConfigBundle(accounts = AccountArchive.parseAccounts(raw))
+            }
         }.getOrNull()
     }
 }
