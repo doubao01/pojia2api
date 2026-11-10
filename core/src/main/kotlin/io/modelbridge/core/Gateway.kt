@@ -257,11 +257,17 @@ class Gateway(
         }
 
         val rawBody = request.body.toString(StandardCharsets.UTF_8)
+        // 与原版一致：开关关闭时原样透传；开启时只清理对话内容里的客户端痕迹。
+        val forwardedBody = if (config.stripClientFingerprint) {
+            ClientFingerprintStripper.strip(rawBody)
+        } else {
+            rawBody
+        }
 
         val wire = try {
             json.decodeFromString(
                 ChatCompletionRequest.serializer(),
-                rawBody,
+                forwardedBody,
             )
         } catch (e: Exception) {
             throw GatewayError.BadRequest("请求体不是合法的 JSON：${e.message}")
@@ -288,7 +294,7 @@ class Gateway(
                 if (!health.isAvailable(target.account.id)) continue
                 progressed = true
                 try {
-                    val applied = applyPolicy(target.model.id, rawBody, target.account.fixedPolicyId)
+                    val applied = applyPolicy(target.model.id, forwardedBody, target.account.fixedPolicyId)
                     val internal = applied?.first ?: original
                     policyName = applied?.second?.name
                     val context = contextFactory(target.provider, target.account)
