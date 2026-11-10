@@ -93,6 +93,8 @@ class UiCopyContractTest {
         assertTrue(taskQuota.contains("\"展开\""))
         assertTrue(taskQuota.contains("个账号"))
         assertTrue(taskQuota.contains("groupBy { it.providerId }"))
+        assertTrue(accounts.contains("127.0.0.1:"))
+        assertTrue(viewModels.contains("没有发现可用的本机网关"))
     }
 
     private fun findProjectRoot(): File {

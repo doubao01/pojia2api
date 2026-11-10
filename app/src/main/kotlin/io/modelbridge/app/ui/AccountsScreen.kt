@@ -102,7 +102,7 @@ fun AccountsScreen(vms: ViewModels) {
                 } else if (scanned.isEmpty()) {
                     "扫描本机端口自动发现，或手动添加任意 OpenAI 兼容地址"
                 } else {
-                    "发现：${scanned.joinToString(", ") { ":$it" }}"
+                    "发现：${scanned.joinToString(", ") { "127.0.0.1:$it" }}"
                 },
                 onClick = { if (!scanning) vms.scanLocalPorts() },
             )

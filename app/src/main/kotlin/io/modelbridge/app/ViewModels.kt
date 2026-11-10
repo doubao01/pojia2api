@@ -819,9 +819,9 @@ class ViewModels(
             _scannedPorts.value = found
             _scanning.value = false
             _message.value = if (found.isEmpty()) {
-                "未发现其它网关实例"
+                "没有发现可用的本机网关"
             } else {
-                "发现 ${found.size} 个端口：${found.joinToString(", ")}"
+                "发现 ${found.size} 个端口：${found.joinToString(", ") { "127.0.0.1:$it" }}"
             }
         }
     }
