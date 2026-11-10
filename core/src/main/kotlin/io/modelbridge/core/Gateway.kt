@@ -8,6 +8,8 @@ import io.modelbridge.core.openai.ChatCompletionResponse
 import io.modelbridge.core.openai.Mapper
 import io.modelbridge.core.openai.ModelListResponse
 import io.modelbridge.core.openai.ModelObject
+import io.modelbridge.core.openai.WireProtocolAdapter
+import io.modelbridge.core.openai.WireProtocol
 import io.modelbridge.core.openai.WireUsage
 import io.modelbridge.spi.ChatChunk
 import io.modelbridge.spi.ChatRequest
@@ -126,7 +128,12 @@ class Gateway(
                 request.path == "/health" -> health()
                 request.path == "/v1/models" || request.path == "/models" -> models()
                 request.path == "/v1/chat/completions" ||
-                    request.path == "/chat/completions" -> chat(request)
+                    request.path == "/chat/completions" ||
+                    request.path == "/v2/chat/completions" -> chat(request, WireProtocol.Chat)
+                request.path == "/v1/responses" || request.path == "/responses" ->
+                    chat(request, WireProtocol.Responses)
+                request.path == "/v1/messages" || request.path == "/messages" ->
+                    chat(request, WireProtocol.Messages)
                 else -> error(
                     GatewayError.NotFound("未知路径：${request.path}"),
                 )
@@ -213,7 +220,12 @@ class Gateway(
      *
      * @return 注入后的请求；没有策略或注入失败返回 null
      */
-    private fun applyPolicy(modelId: String, rawBody: String, fixedPolicyId: String? = null): Pair<ChatRequest, Policy>? {
+    private fun applyPolicy(
+        modelId: String,
+        rawBody: String,
+        fixedPolicyId: String? = null,
+        protocol: WireProtocol = WireProtocol.Chat,
+    ): Pair<ChatRequest, Policy>? {
         val policies = policyStore?.all() ?: return null
         if (policies.isEmpty()) return null
 
@@ -225,19 +237,24 @@ class Gateway(
 
         if (matched.instruction.isBlank()) return null
 
+        val injectionProtocol = when (protocol) {
+            WireProtocol.Chat -> InjectionProtocol.Chat
+            WireProtocol.Responses -> InjectionProtocol.Responses
+            WireProtocol.Messages -> InjectionProtocol.Messages
+        }
         val result = PolicyInjector.inject(
             body = rawBody,
             instruction = matched.instruction,
-            protocol = InjectionProtocol.Chat,
+            protocol = injectionProtocol,
         )
 
         return when (result) {
             is InjectionResult.Applied -> {
                 // 重新解析注入后的请求体，转成内核模型
                 val wire = runCatching {
-                    json.decodeFromString(ChatCompletionRequest.serializer(), result.body)
+                    WireProtocolAdapter.decodeChatRequest(result.body, protocol)
                 }.getOrNull() ?: return null
-                Mapper.toChatRequest(wire).copy(model = modelId) to matched
+                wire.copy(model = modelId) to matched
             }
             is InjectionResult.Failed -> {
                 // 注入失败不阻断请求，按原文转发
@@ -248,7 +265,10 @@ class Gateway(
         }
     }
 
-    private suspend fun chat(request: ServerRequest): HttpResult {
+    private suspend fun chat(
+        request: ServerRequest,
+        protocol: WireProtocol = WireProtocol.Chat,
+    ): HttpResult {
         if (request.method != "POST") {
             throw GatewayError.BadRequest("该路径只接受 POST")
         }
@@ -265,19 +285,16 @@ class Gateway(
         }
 
         val wire = try {
-            json.decodeFromString(
-                ChatCompletionRequest.serializer(),
-                forwardedBody,
-            )
+            WireProtocolAdapter.decodeChatRequest(forwardedBody, protocol)
         } catch (e: Exception) {
-            throw GatewayError.BadRequest("请求体不是合法的 JSON：${e.message}")
+            throw GatewayError.BadRequest("请求体不是合法的 ${protocol.name} JSON：${e.message}")
         }
 
         val publicModel = wire.model.removePrefix(config.publicModelPrefix)
         val suffixIndex = publicModel.lastIndexOf('@')
         val upstreamHint = if (suffixIndex > 0) publicModel.substring(suffixIndex + 1).trim() else ""
         val modelId = if (suffixIndex > 0) publicModel.substring(0, suffixIndex) else publicModel
-        val original = Mapper.toChatRequest(wire).copy(model = modelId)
+        val original = wire.copy(model = modelId)
         val allTargets = router.resolve(modelId)
         val targets = if (upstreamHint.isEmpty()) {
             allTargets
@@ -314,15 +331,17 @@ class Gateway(
                 if (!health.isAvailable(target.account.id)) continue
                 progressed = true
                 try {
-                    val applied = applyPolicy(target.model.id, forwardedBody, target.account.fixedPolicyId)
+                    val applied = applyPolicy(target.model.id, forwardedBody, target.account.fixedPolicyId, protocol)
                     val internal = applied?.first ?: original
                     policyName = applied?.second?.name
                     val context = contextFactory(target.provider, target.account)
                     val result = callWithTimeout { target.provider.chat(context, internal) }
                     health.recordSuccess(target.account.id)
                     return when (result) {
-                        is ChatResult.Complete -> completeResponse(result.response.id, modelId, result)
-                        is ChatResult.Stream -> streamResponse(modelId, result.chunks)
+                        is ChatResult.Complete -> completeResponse(
+                            result.response.id, modelId, result, protocol,
+                        )
+                        is ChatResult.Stream -> streamResponse(modelId, result.chunks, protocol)
                     }
                 } catch (e: ProviderException) {
                     health.recordFailure(target.account.id)
@@ -350,37 +369,32 @@ class Gateway(
         id: String,
         modelId: String,
         result: ChatResult.Complete,
+        protocol: WireProtocol = WireProtocol.Chat,
     ): HttpResult {
-        val response = result.response
-        val wire = ChatCompletionResponse(
-            id = id.ifBlank { "chatcmpl-${UUID.randomUUID()}" },
-            created = clock() / 1000,
+        result.response.usage?.let { usage -> onUsage?.invoke(usage) }
+        val body = WireProtocolAdapter.encodeComplete(
+            protocol = protocol,
+            id = id,
             model = modelId,
-            choices = response.choices.map { choice ->
-                ChatCompletionResponse.WireChoice(
-                    index = choice.index,
-                    message = Mapper.toWireMessage(choice.message),
-                    finishReason = choice.finishReason,
-                )
-            },
-            usage = response.usage?.let {
-                onUsage?.invoke(it)
-                WireUsage(it.promptTokens, it.completionTokens, it.totalTokens)
-            },
+            created = clock() / 1000,
+            result = result,
         )
 
         return HttpResult.Buffered(
             status = 200,
             headers = corsHeaders(),
-            body = json.encodeToString(ChatCompletionResponse.serializer(), wire)
-                .toByteArray(StandardCharsets.UTF_8),
+            body = body.toByteArray(StandardCharsets.UTF_8),
         )
     }
 
-    private fun streamResponse(modelId: String, chunks: Sequence<ChatChunk>): HttpResult {
+    private fun streamResponse(
+        modelId: String,
+        chunks: Sequence<ChatChunk>,
+        protocol: WireProtocol = WireProtocol.Chat,
+    ): HttpResult {
         val created = clock() / 1000
         val seq = chunks.map { chunk ->
-            toSsePayload(chunk, modelId, created)
+            toSsePayload(chunk, modelId, created, protocol)
         }
         return HttpResult.Streamed(
             status = 200,
@@ -389,40 +403,25 @@ class Gateway(
         )
     }
 
-    /** 把一个内部 chunk 编码成 SSE 帧。 */
-    private fun toSsePayload(chunk: ChatChunk, modelId: String, created: Long): ByteArray {
-        val event = ChatCompletionChunk(
-            id = chunk.id.ifBlank { "chatcmpl-${UUID.randomUUID()}" },
-            created = created,
+    /** 把一个内部 chunk 编码成对应协议的 SSE 帧。 */
+    private fun toSsePayload(
+        chunk: ChatChunk,
+        modelId: String,
+        created: Long,
+        protocol: WireProtocol = WireProtocol.Chat,
+    ): ByteArray {
+        val id = chunk.id.ifBlank { "chatcmpl-${UUID.randomUUID()}" }
+        chunk.usage?.let { usage -> onUsage?.invoke(usage) }
+        return WireProtocolAdapter.encodeStreamChunk(
+            protocol = protocol,
+            id = id,
             model = modelId,
-            choices = listOf(
-                ChatCompletionChunk.WireDeltaChoice(
-                    index = chunk.index,
-                    delta = io.modelbridge.core.openai.WireDelta(
-                        role = chunk.role?.let { roleName(it) },
-                        content = chunk.deltaText,
-                        toolCalls = chunk.deltaToolCalls.takeIf { it.isNotEmpty() }?.map { d ->
-                            io.modelbridge.core.openai.WireToolCallDelta(
-                                index = d.index,
-                                id = d.id,
-                                function = io.modelbridge.core.openai.WireFunctionDelta(
-                                    name = d.name,
-                                    arguments = d.argumentsDelta,
-                                ),
-                            )
-                        },
-                    ),
-                    finishReason = chunk.finishReason,
-                ),
-            ),
-            usage = chunk.usage?.let {
-                onUsage?.invoke(it)
-                WireUsage(it.promptTokens, it.completionTokens, it.totalTokens)
-            },
+            created = created,
+            index = chunk.index,
+            text = chunk.deltaText,
+            finishReason = chunk.finishReason,
+            usage = chunk.usage,
         )
-
-        val payload = json.encodeToString(ChatCompletionChunk.serializer(), event)
-        return "data: $payload\n\n".toByteArray(StandardCharsets.UTF_8)
     }
 
     private fun roleName(role: io.modelbridge.spi.ChatMessage.Role): String = when (role) {

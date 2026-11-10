@@ -16,7 +16,7 @@
 - 故障转移从原始请求体重新应用当前账号策略，不叠加上一账号的内容。
 - chat 注入为独立 system 消息，保留客户端原有消息。
 - 注入器还支持 responses 的 instructions，以及 messages 的 system 文本/内容块数组，保留原内容块和缓存标记。
-- **当前网关只开放 chat HTTP 路径**。另外两种注入器通过单元测试，不代表已经实现对应 HTTP 协议入口。
+- 网关已开放 chat、responses、messages 三个 HTTP 入口；策略注入分别写入独立 system 消息、`instructions` 和 `system`，保留客户端原有内容。
 - 策略库本机保存；匹配的策略正文随请求发给用户配置的上游，不向其他服务同步。
 
 示例策略（没有真实密钥或账号）：
@@ -40,7 +40,8 @@
 - 设备授权测试覆盖 Qoder 21 个、WorkBuddy 20 个契约用例；Loomy SMS 协议新增 5 个用例。
 - `AccountArchiveTest` 覆盖 3.10.0 WorkBuddy 单对象 `{account,auth}`、原版账号数组 `provider/uid/nickname/secret`、原生 Account 往返和损坏文件。
 - `ClientFingerprintStripperTest` 覆盖去指纹开关关闭 / 开启、内容块数组、解析失败回退；清理范围按 3.10.0 dex 文案限为对话内容里的计费头、Claude Code / Codex 身份句、模板句、空模板参数。
-- 最近一次 JVM 回归：core 63、providers 46，失败 0。
+- `WireProtocolGatewayTest` 覆盖 `/v1/responses` 与 `/v1/messages` 的请求转换、响应格式、策略注入位置及非法 JSON。
+- 最近一次 JVM 回归：core 72、providers 46，失败 0。
 - GitHub Actions run #20（提交 `45ad59c`）：内核测试 success，Debug APK 构建 success。
 - 回环测试使用受控测试供应商，不验证任意真实外部供应商或登录协议。
 - Android 界面、文件选择器、悬浮球权限、开机广播、进程重启和保存失败恢复仍需要 Android 仪器测试/真机验收，不能以 CI 编译替代。
