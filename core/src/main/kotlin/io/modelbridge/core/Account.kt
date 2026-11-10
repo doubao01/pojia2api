@@ -106,7 +106,8 @@ class InMemoryAccountStore(initial: List<Account> = emptyList()) : AccountStore 
  * 核心规则（这是本项目区别于原实现的地方，也是需求所在）：
  * 1. 只有**启用**的账号贡献模型；
  * 2. 账号级 [Account.disabledModels] 里的模型被剔除；
- * 3. 同名模型来自多个账号时去重，保留优先级最高的那个；
+ * 3. 同名模型来自同一供应商的多个账号时去重，保留优先级最高的那个；
+ *    来自不同供应商的同名模型分别保留，供 `@上游昵称` 指定路由；
  * 4. 没有任何启用账号的供应商，其模型**完全不出现在列表里**。
  *
  * @param cache 模型列表的缓存，TTL 默认 60 秒，到期后重新拉取。
@@ -124,7 +125,7 @@ class ModelCatalog(
     suspend fun build(
         contextFactory: (Provider, Account) -> ProviderContext,
     ): ModelCatalogResult {
-        val models = LinkedHashMap<String, ModelInfo>()
+        val models = LinkedHashMap<String, LinkedHashMap<String, ModelInfo>>()
         val errors = mutableListOf<CatalogError>()
 
         for (provider in registry.all()) {
@@ -154,16 +155,16 @@ class ModelCatalog(
 
                 for (model in fetched) {
                     if (model.id in account.disabledModels) continue
-                    val existing = models[model.id]
-                    // 已存在则保留先到的（优先级更高的账号）
-                    if (existing == null) {
-                        models[model.id] = model
+                    val byProvider = models.getOrPut(model.id) { linkedMapOf() }
+                    // 同一供应商、同名模型保留先到的（优先级更高的账号）
+                    if (!byProvider.containsKey(provider.id)) {
+                        byProvider[provider.id] = model
                     }
                 }
             }
         }
 
-        return ModelCatalogResult(models.values.toList(), errors)
+        return ModelCatalogResult(models.values.flatMap { it.values }, errors)
     }
 
     /**

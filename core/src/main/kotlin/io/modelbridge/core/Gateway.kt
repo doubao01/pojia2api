@@ -273,9 +273,29 @@ class Gateway(
             throw GatewayError.BadRequest("请求体不是合法的 JSON：${e.message}")
         }
 
-        val modelId = wire.model.removePrefix(config.publicModelPrefix)
+        val publicModel = wire.model.removePrefix(config.publicModelPrefix)
+        val suffixIndex = publicModel.lastIndexOf('@')
+        val upstreamHint = if (suffixIndex > 0) publicModel.substring(suffixIndex + 1).trim() else ""
+        val modelId = if (suffixIndex > 0) publicModel.substring(0, suffixIndex) else publicModel
         val original = Mapper.toChatRequest(wire).copy(model = modelId)
-        val targets = router.resolve(modelId)
+        val allTargets = router.resolve(modelId)
+        val targets = if (upstreamHint.isEmpty()) {
+            allTargets
+        } else {
+            val hinted = allTargets.filter { target ->
+                val provider = target.provider
+                val account = target.account
+                upstreamHint.equals(provider.id, ignoreCase = true) ||
+                    upstreamHint.equals(provider.displayName, ignoreCase = true) ||
+                    upstreamHint.equals(account.label, ignoreCase = true) ||
+                    account.label.contains(upstreamHint, ignoreCase = true) ||
+                    provider.displayName.contains(upstreamHint, ignoreCase = true)
+            }
+            if (hinted.isEmpty()) {
+                throw GatewayError.NotFound("找不到上游昵称对应的账号：$upstreamHint")
+            }
+            hinted
+        }
         val failures = mutableListOf<String>()
 
         policyName = null
