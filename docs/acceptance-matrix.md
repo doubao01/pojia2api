@@ -4,7 +4,7 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 78、providers 81，失败 0。
+- 本地 JVM 回归：core 78、providers 83，失败 0。
 - GitHub Actions：run #33（Qoder 客户端标识）、#34（凭据有效期）、#35（到期前续期）、#36（任务/额度供应商协议）、#37（Loomy 任务积分）、#38（多供应商任务额度协议）均为 `内核测试 success`、`构建 APK success`。
 - 最近主分支提交：`d35f65b`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
@@ -29,7 +29,7 @@
 | 连通性检测、端口扫描 | `ViewModels.checkAccount` 与本机端口扫描 | CI APK |
 | 首页统计、缓存命中率、token | `GatewayRunner` 使用真实上游 `Usage`，首页显示请求/成功率/耗时/缓存/token | core 测试 / CI APK |
 | 首页复制地址、管理入口 | 复制本机/局域网地址；账号、策略、任务/额度入口 | CI APK |
-| 任务/额度入口与页面 | `TaskQuotaScreen` 独立页面；按 3.10.0 文案显示一键签到、一键任务、任务列表、套餐/共享/加购额度；`AccountServiceRegistry` 已按静态契约接入 WorkBuddy 签到/成长任务/额度、Qoder 额度、Loomy 新人任务/积分、小浣熊/CatPaw 积分、Tabbit/Meoo/Trae 签到或额度，逐账号汇总成功/失败/跳过，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | 8 组账号业务测试共 27 项、3.9.3 反编译契约、CI APK；真实供应商接口未验证 |
+| 任务/额度入口与页面 | `TaskQuotaScreen` 独立页面；按 3.10.0 文案显示一键签到、一键任务、任务列表、套餐/共享/加购额度；`AccountServiceRegistry` 已按静态契约接入 WorkBuddy 签到/成长任务/额度、Qoder 额度、Loomy 新人任务/积分、小浣熊/CatPaw 积分、Tabbit/Meoo/Trae 签到或额度、AStudio 积分，逐账号汇总成功/失败/跳过，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | 9 组账号业务测试共 29 项、3.9.3 反编译契约、CI APK；真实供应商接口未验证 |
 | 日志页清空按钮 | `LogScreen` 调用 `GatewayRunner.clearLog` | CI APK |
 | 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 文案清理对话内容中的计费头、Claude/Codex 身份句、模板句、空模板参数；模型和工具参数保留 | `ClientFingerprintStripperTest`、CI APK |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |
@@ -38,7 +38,7 @@
 
 ## 仍未完成或受限范围
 
-1. 已按 3.9.3 静态契约接入 WorkBuddy、Qoder、Loomy、小浣熊、CatPaw、Tabbit、Meoo、Trae 的签到/任务/积分或额度接口，但尚未用真实账号抓包验证；AStudio、AgentMore、Dangbei 等剩余供应商的适配器尚未逐家实现，Qoder 签到和部分复杂任务活动也因静态伪代码歧义未冒充已实现。当前页面对未接入或查询失败明确标注，不伪造数据。
+1. 已按 3.9.3 静态契约接入 WorkBuddy、Qoder、Loomy、小浣熊、CatPaw、Tabbit、Meoo、Trae、AStudio 的签到/任务/积分或额度接口，但尚未用真实账号抓包验证；AgentMore 的请求签名依赖原 APK 固定盐值，未复制该值，Dangbei 原版积分查询为空实现，Qoder 签到和部分复杂任务活动也因静态伪代码歧义未冒充已实现。当前页面对未接入或查询失败明确标注，不伪造数据。
 2. Loomy 生产签名材料没有从原 APK 复制；构建期可通过 `MODELBRIDGE_LOOMY_APP_ID` / `MODELBRIDGE_LOOMY_ACCESS_KEY` / `MODELBRIDGE_LOOMY_SECRET` 注入，CI 可从 GitHub Secrets 传入。公开构建未配置时界面显示未配置，无法完成真实短信发送。Qoder 客户端标识也不从原 APK 复制，改为 `MODELBRIDGE_QODER_CLIENT_ID_CN` / `MODELBRIDGE_QODER_CLIENT_ID_GLOBAL` 构建期注入；未配置时设备授权明确提示缺少配置。
 3. 3.10.0 真机逐屏视觉核对尚未完成。现有 3.10.0 证据来自 dex 字符串与 3.9.3 反编译源码，不能替代像素/交互验收。
 4. WebView、设备授权、悬浮球、开机广播、文件选择器和配置恢复仍需真机操作验收；CI 只证明编译和 JVM 行为。

@@ -21,6 +21,7 @@ import io.modelbridge.providers.auth.QoderClientIds
 import io.modelbridge.providers.auth.QoderDeviceAuth
 import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
 import io.modelbridge.providers.account.AccountServiceRegistry
+import io.modelbridge.providers.account.AStudioAccountService
 import io.modelbridge.providers.account.CatpawAccountService
 import io.modelbridge.providers.account.LoomyAccountService
 import io.modelbridge.providers.account.MeooAccountService
@@ -126,6 +127,7 @@ class AppContainer(private val app: Application) {
             TabbitAccountService(httpClient),
             MeooAccountService(httpClient),
             TraeAccountService(httpClient),
+            AStudioAccountService(httpClient),
         ),
     )
 

@@ -25,12 +25,14 @@
 - `TabbitAccountService`：签到状态/每日签到、套餐额度百分比换算；固定浏览器识别和请求上下文由宿主注入。
 - `MeooAccountService`：Cookie 登录态下的每日登录赠送状态和积分余额。
 - `RaccoonAccountService` / `CatpawAccountService`：小浣熊 Bearer 积分余额、CatPaw X-Auth-Token 积分余额。
+- `AStudioAccountService`：用已保存 API Key 查询 `/points/balance` 与 `/membership/me`，汇总普通积分、星火积分和套餐名；版本/客户端上下文由宿主注入。
 - UI：`TaskQuotaScreen` 进入页面时刷新；按钮按供应商逐账号执行并汇总「成功/失败/跳过」；任务列表显示真实状态与奖励；额度按套餐/共享/加购/积分分类汇总；失败显示上游错误或「查询失败」，不用本地请求数和 token 用量伪造额度。
 
 ## 本地验证
 
-- `AccountServicesTest` 8 项、`LoomyAccountServiceTest` 4 项、`BearerCreditServicesTest` 4 项、`TabbitAccountServiceTest` 4 项、`MeooAccountServiceTest` 3 项、`TraeAccountServiceTest` 4 项：覆盖 WorkBuddy/Qoder/Loomy/小浣熊/CatPaw/Tabbit/Meoo/Trae 的请求头、路径、响应解析、签到与任务状态、失败隔离。
-- `./gradlew :core:test :providers:test --offline`：core 78、providers 81，失败 0。
+- `AccountServicesTest` 8 项、`LoomyAccountServiceTest` 4 项、`BearerCreditServicesTest` 4 项、`TabbitAccountServiceTest` 4 项、`MeooAccountServiceTest` 3 项、`TraeAccountServiceTest` 4 项、`AStudioAccountServiceTest` 2 项：覆盖已接入供应商的请求头、路径、响应解析、签到与任务状态、失败隔离。
+- 未实现边界：AgentMore 的 `X-Sign` 依赖原 APK 固定盐值，不从反编译源码复制，因此未生成不可信签名请求；Dangbei 原版 `c(account)` 直接返回 `null`，保持明确不支持。
+- `./gradlew :core:test :providers:test --offline`：core 78、providers 83，失败 0。
 - CI 负责 Android `:app:assembleDebug` 编译与打包；JVM 测试不覆盖 Android UI 渲染。
 
 ## 边界
