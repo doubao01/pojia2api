@@ -31,10 +31,9 @@ class GatewayService : Service() {
                 }
                 val actualPort = runner.start(port)
                 if (actualPort > 0) {
-                    showNotification("已启动，监听端口 $actualPort")
+                    showNotification("网关管家已启动：$actualPort")
                 } else {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                    showNotification("网关启动失败，保持服务存活以便重试")
                 }
             }
             ACTION_STOP -> {
@@ -45,7 +44,7 @@ class GatewayService : Service() {
             else -> {
                 // 不因空 Intent 自动启动；用户停止后也不重建监听。
                 if (runner.running.value) {
-                    showNotification("已启动，监听端口 ${runner.port.value}")
+                    showNotification("网关管家已启动：${runner.port.value}")
                 } else {
                     stopSelf()
                 }
@@ -72,7 +71,7 @@ class GatewayService : Service() {
         }
         val stop = Intent(this, GatewayService::class.java).apply { action = ACTION_STOP }
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ModelBridge 网关")
+            .setContentTitle("网关管家")
             .setContentText(message)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_LOW)

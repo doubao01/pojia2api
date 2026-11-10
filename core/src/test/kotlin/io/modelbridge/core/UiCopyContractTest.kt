@@ -43,6 +43,8 @@ class UiCopyContractTest {
         val deviceLogin = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/DeviceLoginDialog.kt").readText()
         val policy = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/PolicyScreen.kt").readText()
         val runner = File(root, "app/src/main/kotlin/io/modelbridge/app/GatewayRunner.kt").readText()
+        val gatewayService = File(root, "app/src/main/kotlin/io/modelbridge/app/service/GatewayService.kt").readText()
+        val floating = File(root, "app/src/main/kotlin/io/modelbridge/app/service/FloatingBallService.kt").readText()
         assertTrue(settings.contains("统计已重置"))
         assertTrue(settings.contains("已导入 "))
         assertTrue(homeLayout.contains("StatPairRow"))
@@ -67,6 +69,10 @@ class UiCopyContractTest {
         assertTrue(policy.contains("三个协议的注入位置不同：chat 作为独立 system 消息前置；responses 写进 instructions；messages 写进 system。客户端原有内容一律保留。"))
         assertTrue(policy.contains("策略正文只存在本机，不会上传。"))
         assertTrue(runner.contains("未注入策略："))
+        assertTrue(gatewayService.contains("网关管家已启动："))
+        assertTrue(gatewayService.contains("网关启动失败，保持服务存活以便重试"))
+        assertTrue(gatewayService.contains("setContentTitle(\"网关管家\")"))
+        assertTrue(floating.contains("setContentTitle(\"网关管家\")"))
     }
 
     private fun findProjectRoot(): File {

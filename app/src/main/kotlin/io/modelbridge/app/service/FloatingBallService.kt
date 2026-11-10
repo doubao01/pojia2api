@@ -158,7 +158,7 @@ class FloatingBallService : Service() {
         val open = PendingIntent.getActivity(this, 2, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         startForeground(NOTIFICATION_ID, NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ModelBridge")
+            .setContentTitle("网关管家")
             .setContentText("悬浮球已显示")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(open)
