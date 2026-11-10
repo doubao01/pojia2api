@@ -4,9 +4,9 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 78、providers 85，失败 0。
-- GitHub Actions：run #35（到期前续期）、#36（任务/额度供应商协议）、#37（Loomy 任务积分）、#38（多供应商任务额度协议）、#39（验收文档）、#40（AStudio 积分）、#41（CI 验收记录）、#42（验收记录）、#43（账号页积分与每日签到）均为 `内核测试 success`、`构建 APK success`。
-- 最近主分支提交：`3cd77b3`。
+- 本地 JVM 回归：core 83、providers 85，失败 0。
+- GitHub Actions：run #35（到期前续期）、#36（任务/额度供应商协议）、#37（Loomy 任务积分）、#38（多供应商任务额度协议）、#39（验收文档）、#40（AStudio 积分）、#41（CI 验收记录）、#42（验收记录）、#43（账号页积分与每日签到）、#44（CI 验收记录）均为 `内核测试 success`、`构建 APK success`。
+- 最近主分支提交：`8cbcf1b`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
 ## 功能矩阵
@@ -32,7 +32,7 @@
 | 任务/额度入口与页面 | `TaskQuotaScreen` 独立页面；按 3.10.0 文案显示一键签到、一键任务、任务列表、套餐/共享/加购额度；`AccountServiceRegistry` 已按静态契约接入多家供应商，逐账号汇总成功/失败/跳过，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | 9 组账号业务测试共 29 项、3.9.3 反编译契约、CI APK；真实供应商接口未验证 |
 | 账号业务与逐账号积分/签到 | `providerGroups` 账号行按 CREDIT_REFRESH/CHECKIN 显示真实可用积分、额度详情、今日已签到/未签到，提供单账号「刷新积分」「签到」；本地签到状态按 Asia/Shanghai 自然日持久化 | `AccountDailyCheckinTest`（2 项）、账号业务测试、CI APK；真实服务端签到未验证 |
 | 日志页清空按钮 | `LogScreen` 调用 `GatewayRunner.clearLog` | CI APK |
-| 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 文案清理对话内容中的计费头、Claude/Codex 身份句、模板句、空模板参数；模型和工具参数保留 | `ClientFingerprintStripperTest`、CI APK |
+| 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 dex 与 3.9.3 `z/g.java` 规则清理计费头、Claude/Codex/ZCode/DS Harness 身份句、模板句和空模板参数；身份句按原版替换为中性表述而不误删；网关记录规则级诊断，解析失败回退原文；模型和工具参数保留 | `ClientFingerprintStripperTest`（9 项）、CI APK；请求头指纹规则因静态规则表被 JADX 截断尚未完整复刻 |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |
 | 多协议 HTTP 入口 | `/chat/completions`、`/responses`、`/messages` 与对应 `/v1` 路径；策略注入按协议写入 system / instructions / system | `WireProtocolGatewayTest`、CI APK |
 | 设置页与关于页文案 | 按 3.10.0 dex 字符串对齐设置项、首页接入说明、免责声明、本机转发说明与作者署名语义 | `3.10.0-ui-audit.md`、CI APK |

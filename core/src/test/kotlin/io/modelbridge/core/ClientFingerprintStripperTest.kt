@@ -108,6 +108,88 @@ class ClientFingerprintStripperTest {
         val raw = """{"messages":[{"role":"user","content":[{"type":"text","text":"You are Codex\nhello"}]}]}"""
         val cleaned = ClientFingerprintStripper.strip(raw)
         assertFalse(cleaned.contains("You are Codex"))
+        assertTrue(cleaned.contains("You are a coding agent"))
         assertTrue(cleaned.contains("hello"))
+    }
+
+    @Test
+    fun `identity phrases are replaced with neutral wording like the original`() {
+        val raw = """{"messages":[{"role":"system","content":"You are Claude Code\nYou are ZCode, an interactive coding agent\nYou are a coding agent running in the Codex CLI tool\nYou are an AI agent powered by DeepSeek Harness"}]}"""
+        val cleaned = ClientFingerprintStripper.strip(raw)
+
+        assertTrue(cleaned.contains("You are a coding assistant"))
+        assertTrue(cleaned.contains("You are an interactive coding agent"))
+        assertTrue(cleaned.contains("You are a coding agent running in a terminal CLI tool"))
+        assertTrue(cleaned.contains("You are an AI agent powered by a local coding harness"))
+        assertFalse(cleaned.contains("You are Claude Code"))
+        assertFalse(cleaned.contains("DeepSeek Harness"))
+    }
+
+    @Test
+    fun `strip report counts rules without exposing request text`() {
+        val raw = """{"model":"demo","messages":[{"role":"system","content":"x-anthropic-billing-hdr: fixture\n{{tool_definitions}}\nYou are Codex"}]}"""
+        val result = ClientFingerprintStripper.stripWithReport(raw)
+
+        assertTrue(result.parsed)
+        assertTrue(result.rules.containsKey("Claude Code 身份句").not() || result.rules.isNotEmpty())
+        assertTrue(result.rules.containsKey("Codex 身份句"))
+        assertTrue(result.rules.containsKey("Anthropic 计费头"))
+        assertTrue(result.rules.containsKey("模板占位行"))
+        assertTrue(result.diagnostic.startsWith("去掉客户端指纹："))
+        assertFalse(result.diagnostic.contains("fixture"))
+        assertTrue(result.body.contains(""""model":"demo""""))
+    }
+
+    @Test
+    fun `gateway records fingerprint rules without exposing body`() = runBlocking {
+        val provider = FakeProvider("demo", models = listOf(ModelInfo("demo-1", "demo")))
+        val gateway = gateway(strip = true, provider)
+        gateway.refreshCatalog()
+        val raw = """{"model":"demo-1","messages":[{"role":"system","content":"You are Codex\nx-anthropic-billing-hdr: fixture\nhello"},{"role":"user","content":"hi"}]}"""
+        val request = ServerRequest(
+            method = "POST",
+            path = "/v1/chat/completions",
+            query = "",
+            version = "HTTP/1.1",
+            headers = emptyMap(),
+            body = raw.encodeToByteArray(),
+        )
+
+        gateway.handle(request)
+
+        val diagnostic = gateway.lastFingerprintDiagnostic.orEmpty()
+        assertTrue(diagnostic.startsWith("去掉客户端指纹："))
+        assertTrue(diagnostic.contains("Codex 身份句"))
+        assertFalse(diagnostic.contains("fixture"))
+        assertFalse(diagnostic.contains("hello"))
+    }
+
+    @Test
+    fun `gateway falls back to original body when fingerprint parsing fails`() = runBlocking {
+        val provider = FakeProvider("demo", models = listOf(ModelInfo("demo-1", "demo")))
+        val gateway = gateway(strip = true, provider)
+        gateway.refreshCatalog()
+        val invalidRequest = ServerRequest(
+            method = "POST",
+            path = "/v1/chat/completions",
+            query = "",
+            version = "HTTP/1.1",
+            headers = emptyMap(),
+            body = "not-json".encodeToByteArray(),
+        )
+
+        gateway.handle(invalidRequest)
+
+        assertTrue(gateway.lastFingerprintDiagnostic?.contains("按原文发出") == true)
+    }
+
+    @Test
+    fun `failed parse falls back to the original body without diagnostic rules`() {
+        val result = ClientFingerprintStripper.stripWithReport("not-json")
+
+        assertEquals("not-json", result.body)
+        assertFalse(result.parsed)
+        assertTrue(result.rules.isEmpty())
+        assertTrue(result.diagnostic.isEmpty())
     }
 }

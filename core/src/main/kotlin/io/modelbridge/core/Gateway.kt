@@ -101,6 +101,11 @@ class Gateway(
     var policyName: String? = null
         private set
 
+    /** 最近一次去客户端指纹命中的规则汇总；不记录请求正文。 */
+    @Volatile
+    var lastFingerprintDiagnostic: String? = null
+        private set
+
     /** 最近一次策略注入失败的原因。 */
     @Volatile
     var lastPolicyError: String? = null
@@ -284,10 +289,19 @@ class Gateway(
         }
 
         val rawBody = request.body.toString(StandardCharsets.UTF_8)
-        // 与原版一致：开关关闭时原样透传；开启时只清理对话内容里的客户端痕迹。
+        // 与原版一致：开关关闭时原样透传；开启时只改写对话内容里的客户端痕迹。
+        // 解析/改写失败按原文发出，并记录规则级诊断，不把正文写进日志。
         val forwardedBody = if (config.stripClientFingerprint) {
-            ClientFingerprintStripper.strip(rawBody)
+            val result = runCatching { ClientFingerprintStripper.stripWithReport(rawBody) }
+                .getOrElse { ClientFingerprintStripper.StripResult(rawBody, emptyMap(), false) }
+            lastFingerprintDiagnostic = when {
+                !result.parsed -> "去掉客户端指纹失败，按原文发出：请求体不是 JSON 对象"
+                result.diagnostic.isNotBlank() -> result.diagnostic
+                else -> null
+            }
+            result.body
         } else {
+            lastFingerprintDiagnostic = null
             rawBody
         }
 

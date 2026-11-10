@@ -95,7 +95,8 @@ class GatewayRunner(
             httpServer.start { request ->
                 runCatching {
                     val started = System.currentTimeMillis()
-                    val result = gatewayProvider().handle(request)
+                    val gateway = gatewayProvider()
+                    val result = gateway.handle(request)
                     val cost = System.currentTimeMillis() - started
                     append(
                         LogEntry(
@@ -104,6 +105,7 @@ class GatewayRunner(
                             path = request.path,
                             status = statusOf(result),
                             costMillis = cost,
+                            message = gateway.lastFingerprintDiagnostic,
                         ),
                     )
                     result
