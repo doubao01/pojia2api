@@ -30,6 +30,22 @@ android {
         }
     }
 
+    // Loomy 短信签名材料只能由构建环境注入；公开源码/CI 不保存任何生产秘密。
+    // 本机可用 ~/.gradle/gradle.properties 或环境变量提供：
+    // MODELBRIDGE_LOOMY_APP_ID / ACCESS_KEY / SECRET。
+    fun loomy(name: String): String =
+        (providers.gradleProperty("MODELBRIDGE_LOOMY_$name").orNull
+            ?: providers.environmentVariable("MODELBRIDGE_LOOMY_$name").orNull
+            ?: "").trim()
+
+    listOf("debug", "release").forEach { type ->
+        buildTypes.getByName(type) {
+            buildConfigField("String", "LOOMY_APP_ID", "\"" + loomy("APP_ID") + "\"")
+            buildConfigField("String", "LOOMY_ACCESS_KEY", "\"" + loomy("ACCESS_KEY") + "\"")
+            buildConfigField("String", "LOOMY_SECRET", "\"" + loomy("SECRET") + "\"")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -41,6 +57,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {

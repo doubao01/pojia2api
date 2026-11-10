@@ -48,13 +48,29 @@ class AppContainer(private val app: Application) {
     /** 应用级 Context，供需要 Context 的辅助组件使用。 */
     val context: Application get() = app
 
+    val httpClient: HttpClient = JvmHttpClient()
+
     /**
-     * Loomy 短信签名材料由宿主构建注入；当前公开源码默认未配置。
+     * Loomy 短信签名材料由构建期注入 BuildConfig；公开构建没有这些值时保持 null。
      * UI 会明确提示缺少配置，不会自动发送短信或伪造登录成功。
      */
-    val loomySmsAuth: LoomySmsAuth? = null
-
-    val httpClient: HttpClient = JvmHttpClient()
+    val loomySmsAuth: LoomySmsAuth? = run {
+        val appId = BuildConfig.LOOMY_APP_ID
+        val accessKey = BuildConfig.LOOMY_ACCESS_KEY
+        val secret = BuildConfig.LOOMY_SECRET
+        if (appId.isBlank() || accessKey.isBlank() || secret.isBlank()) {
+            null
+        } else {
+            LoomySmsAuth(
+                http = httpClient,
+                material = LoomySigningMaterial(
+                    appId = appId,
+                    accessKey = accessKey,
+                    secret = secret,
+                ),
+            )
+        }
+    }
 
     /** 供应商注册表，内置 14 家。 */
     val registry: ProviderRegistry = ProviderRegistry().apply {

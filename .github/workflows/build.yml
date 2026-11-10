@@ -85,6 +85,10 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-apk-
 
       - name: 构建 Debug APK
+        env:
+          MODELBRIDGE_LOOMY_APP_ID: ${{ secrets.MODELBRIDGE_LOOMY_APP_ID }}
+          MODELBRIDGE_LOOMY_ACCESS_KEY: ${{ secrets.MODELBRIDGE_LOOMY_ACCESS_KEY }}
+          MODELBRIDGE_LOOMY_SECRET: ${{ secrets.MODELBRIDGE_LOOMY_SECRET }}
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: 上传 APK
