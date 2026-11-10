@@ -98,6 +98,11 @@ class GatewayRunner(
                     val gateway = gatewayProvider()
                     val result = gateway.handle(request)
                     val cost = System.currentTimeMillis() - started
+                    val diagnostics = buildList {
+                        gateway.policyName?.let { add("策略「$it」") }
+                        gateway.lastPolicyError?.let { add("未注入策略：$it") }
+                        gateway.lastFingerprintDiagnostic?.let { add(it) }
+                    }.joinToString("；").ifBlank { null }
                     append(
                         LogEntry(
                             time = started,
@@ -105,7 +110,7 @@ class GatewayRunner(
                             path = request.path,
                             status = statusOf(result),
                             costMillis = cost,
-                            message = gateway.lastFingerprintDiagnostic,
+                            message = diagnostics,
                         ),
                     )
                     result

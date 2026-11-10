@@ -41,6 +41,8 @@ class UiCopyContractTest {
         val viewModels = File(root, "app/src/main/kotlin/io/modelbridge/app/ViewModels.kt").readText()
         val webLogin = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/WebLoginDialog.kt").readText()
         val deviceLogin = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/DeviceLoginDialog.kt").readText()
+        val policy = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/PolicyScreen.kt").readText()
+        val runner = File(root, "app/src/main/kotlin/io/modelbridge/app/GatewayRunner.kt").readText()
         assertTrue(settings.contains("统计已重置"))
         assertTrue(settings.contains("已导入 "))
         assertTrue(homeLayout.contains("StatPairRow"))
@@ -61,6 +63,10 @@ class UiCopyContractTest {
         assertTrue(viewModels.contains("输入手机号获取验证码"))
         assertTrue(viewModels.contains("验证码已发送"))
         assertTrue(viewModels.contains("验证码不正确，请检查后重试"))
+        assertTrue(policy.contains("按「映射后的实际上游模型 ID」精确匹配"))
+        assertTrue(policy.contains("三个协议的注入位置不同：chat 作为独立 system 消息前置；responses 写进 instructions；messages 写进 system。客户端原有内容一律保留。"))
+        assertTrue(policy.contains("策略正文只存在本机，不会上传。"))
+        assertTrue(runner.contains("未注入策略："))
     }
 
     private fun findProjectRoot(): File {
