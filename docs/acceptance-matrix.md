@@ -4,8 +4,8 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 119、providers 90，失败 0。
-- GitHub Actions：run #35—#52、#57—#111 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
+- 本地 JVM 回归：core 121、providers 90，失败 0。
+- GitHub Actions：run #35—#52、#57—#111、#113 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复；#112 的账号中心 token 行误插 `else` 导致 APK 编译失败，已由 #113 修复。地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
 - 主分支最新提交以 `git log -1` 为准；每次推送后由 CI 验证对应 HEAD。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
@@ -37,7 +37,7 @@
 | 日志页清空按钮 | `LogScreen` 提供清空按钮、空态「暂无日志」，副标题按原版显示「最近 N 条」；界面按 3.10.0 `MainActivity.n()` 显示最近 30 条，按 `C/M.java` 补充 I/W/E 级别；每条日志显示耗时、实际命中的上游、策略/指纹诊断与 token 用量；`GatewayRunner.clearLog` 清空内存日志、保留累计统计 | `UiCopyContractTest`、CI APK |
 | 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 dex 与 3.9.3 `z/g.java` 规则清理计费头、Claude/Codex/ZCode/DS Harness 身份句、模板句和空模板参数；设置页补齐原版风险说明、开启/关闭 Toast；身份句按原版替换为中性表述而不误删；网关记录规则级诊断，解析失败回退原文；模型和工具参数保留 | `ClientFingerprintStripperTest`（9 项）、`UiCopyContractTest`、CI APK；请求头指纹规则因静态规则表被 JADX 截断尚未完整复刻 |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |
-| 多协议 HTTP 入口 | `/chat/completions`、`/responses`、`/messages` 与对应 `/v1` 路径；策略注入按协议写入 system / instructions / system；responses/messages 的 reasoning_effort、context_window、parallel_tool_calls、top_k、thinking、metadata、tool_choice 等扩展字段按原始 JSON 类型透传；按 3.10.0 dex 补齐 messages/content/role、tools/function、tool_calls 链和扩展参数取值校验 | `WireProtocolGatewayTest`、`WireProtocolAdapterTest`（7 项）、`ExtrasForwardingTest`、CI APK |
+| 多协议 HTTP 入口 | `/chat/completions`、`/responses`、`/messages` 与对应 `/v1` 路径，以及 `/v1/responses/compact`；根路径按 3.10.0 `D/a.java` 返回服务名和端点清单；`/models` 按原版输出上下文别名、capabilities 与推理级别；策略注入按协议写入 system / instructions / system；responses/messages 的 reasoning_effort、context_window、parallel_tool_calls、top_k、thinking、metadata、tool_choice 等扩展字段按原始 JSON 类型透传；按 3.10.0 dex 补齐 messages/content/role、tools/function、tool_calls 链和扩展参数取值校验 | `GatewayTest`、`WireProtocolGatewayTest`、`WireProtocolAdapterTest`（7 项）、`ExtrasForwardingTest`、CI APK |
 | 设置页与关于页文案 | 按 3.10.0 dex 字符串对齐设置项、首页接入说明、免责声明、本机转发说明与作者署名语义；接入地址随运行状态动态填入本机 URL，策略库导入帮助与「上游」页模型 ID 文案逐字补齐；配置导出完成、扫描/检测状态、任务/额度失败提示补齐原版文案 | `UiCopyContractTest`、`3.10.0-ui-audit.md`、CI APK |
 
 ## 仍未完成或受限范围

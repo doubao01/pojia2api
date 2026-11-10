@@ -170,6 +170,25 @@ data class ModelObject(
     val created: Long = 0,
     @SerialName("owned_by") val ownedBy: String = "modelbridge",
     @SerialName("context_length") val contextLength: Long? = null,
+    @SerialName("context_window") val contextWindow: Long? = null,
+    @SerialName("max_context_tokens") val maxContextTokens: Long? = null,
+    @SerialName("max_input_tokens") val maxInputTokens: Long? = null,
+    @SerialName("max_model_len") val maxModelLen: Long? = null,
+    val capabilities: ModelCapabilities? = null,
+    @SerialName("supports_tools") val supportsTools: Boolean? = null,
+    @SerialName("supports_function_calling") val supportsFunctionCalling: Boolean? = null,
+    @SerialName("supports_reasoning") val supportsReasoning: Boolean? = null,
+    @SerialName("supports_thinking") val supportsThinking: Boolean? = null,
+    @SerialName("reasoning_levels") val reasoningLevels: List<String>? = null,
+)
+
+@Serializable
+data class ModelCapabilities(
+    val tools: Boolean,
+    @SerialName("tool_calls") val toolCalls: Boolean,
+    @SerialName("function_calling") val functionCalling: Boolean,
+    val reasoning: Boolean,
+    val thinking: Boolean,
 )
 
 /* ---------- 错误 ---------- */

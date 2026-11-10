@@ -7,6 +7,7 @@ import io.modelbridge.core.openai.ChatCompletionRequest
 import io.modelbridge.core.openai.ChatCompletionResponse
 import io.modelbridge.core.openai.Mapper
 import io.modelbridge.core.openai.ModelListResponse
+import io.modelbridge.core.openai.ModelCapabilities
 import io.modelbridge.core.openai.ModelObject
 import io.modelbridge.core.openai.WireProtocolAdapter
 import io.modelbridge.core.openai.WireProtocol
@@ -138,12 +139,15 @@ class Gateway(
         return try {
             authenticate(request)
             when {
+                request.path == "/" -> serviceInfo()
                 request.path == "/health" -> health()
                 request.path == "/v1/models" || request.path == "/models" -> models()
                 request.path == "/v1/chat/completions" ||
                     request.path == "/chat/completions" ||
                     request.path == "/v2/chat/completions" -> chat(request, WireProtocol.Chat)
-                request.path == "/v1/responses" || request.path == "/responses" ->
+                request.path == "/v1/responses" ||
+                    request.path == "/responses" ||
+                    request.path == "/v1/responses/compact" ->
                     chat(request, WireProtocol.Responses)
                 request.path == "/v1/messages" || request.path == "/messages" ->
                     chat(request, WireProtocol.Messages)
@@ -190,6 +194,14 @@ class Gateway(
         }
     }
 
+    /** 3.10.0 `D/a.java` 根路径返回服务名与已开放端点清单。 */
+    private fun serviceInfo(): HttpResult = HttpResult.Buffered(
+        status = 200,
+        headers = corsHeaders(),
+        body = """{"service":"modelbridge","endpoints":["/v1/models","/v1/chat/completions","/v1/responses","/v1/responses/compact","/v1/messages","/models","/chat/completions","/responses","/messages","/health"]}"""
+            .toByteArray(StandardCharsets.UTF_8),
+    )
+
     private suspend fun health(): HttpResult {
         val models = router.knownModels()
         val body = """{"status":"ok","service":"modelbridge","providers":${registry.size},"models":${models.size}}"""
@@ -204,11 +216,10 @@ class Gateway(
         refreshIfStale()
         val snapshot = router.knownModels()
         val now = clock() / 1000
-
         val response = ModelListResponse(
             data = snapshot
                 .distinctBy { it.id }
-                .map(::toModelObject)
+                .map { toModelObject(it, now) }
                 .map { obj ->
                     if (config.publicModelPrefix.isEmpty()) obj
                     else obj.copy(id = config.publicModelPrefix + obj.id)
@@ -223,12 +234,39 @@ class Gateway(
         )
     }
 
-    private fun toModelObject(model: ModelInfo): ModelObject = ModelObject(
-        id = model.id,
-        ownedBy = model.providerId,
-        created = clock() / 1000,
-        contextLength = model.contextLength.takeIf { it > 0 },
-    )
+    /** 按 3.10.0 `D/a.java` 补齐同一上下文值的别名与能力字段。 */
+    private fun toModelObject(model: ModelInfo, created: Long): ModelObject {
+        val context = model.contextLength.takeIf { it > 0 }
+        val hasCapabilities = model.supportsTools || model.supportsReasoning
+        return ModelObject(
+            id = model.id,
+            created = created,
+            ownedBy = model.providerId,
+            contextLength = context,
+            contextWindow = context,
+            maxContextTokens = context,
+            maxInputTokens = context,
+            maxModelLen = context,
+            capabilities = if (hasCapabilities) {
+                ModelCapabilities(
+                    tools = model.supportsTools,
+                    toolCalls = model.supportsTools,
+                    functionCalling = model.supportsTools,
+                    reasoning = model.supportsReasoning,
+                    thinking = model.supportsReasoning,
+                )
+            } else null,
+            supportsTools = model.supportsTools.takeIf { hasCapabilities },
+            supportsFunctionCalling = model.supportsTools.takeIf { hasCapabilities },
+            supportsReasoning = model.supportsReasoning.takeIf { hasCapabilities },
+            supportsThinking = model.supportsReasoning.takeIf { hasCapabilities },
+            reasoningLevels = model.extras["reasoning_levels"]
+                ?.split(',')
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.takeIf { it.isNotEmpty() },
+        )
+    }
 
     /**
      * 按模型匹配并应用策略。

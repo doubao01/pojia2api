@@ -14,7 +14,16 @@ class GatewayTest {
     private val provider = FakeProvider(
         "demo",
         displayName = "演示",
-        models = listOf(ModelInfo("demo-1", "demo")),
+        models = listOf(
+            ModelInfo(
+                id = "demo-1",
+                providerId = "demo",
+                contextLength = 200_000,
+                supportsTools = true,
+                supportsReasoning = true,
+                extras = mapOf("reasoning_levels" to "low,high,max"),
+            ),
+        ),
     )
 
     private fun makeGateway(config: GatewayConfig): Pair<Gateway, StubContextFactory> {
@@ -84,7 +93,26 @@ class GatewayTest {
     }
 
     @Test
-    fun `模型列表只含启用账号`() = runTest {
+    fun `根路径返回原版服务清单`() = runTest {
+        val (gateway, _) = makeGateway(GatewayConfig())
+        val result = gateway.handle(request("/")) as HttpResult.Buffered
+        val json = result.body.decodeToString()
+
+        assertEquals(200, result.status)
+        listOf(
+            "\"service\":\"modelbridge\"",
+            "/v1/models",
+            "/v1/chat/completions",
+            "/v1/responses",
+            "/v1/responses/compact",
+            "/v1/messages",
+            "/models",
+            "/health",
+        ).forEach { assertTrue(json.contains(it), json) }
+    }
+
+    @Test
+    fun `模型列表按原版补齐上下文别名和能力字段`() = runTest {
         val (gateway, _) = makeGateway(GatewayConfig())
         gateway.refreshCatalog()
         val result = gateway.handle(request("/v1/models"))
@@ -92,6 +120,25 @@ class GatewayTest {
         val json = buffered.body.decodeToString()
         assertEquals(200, buffered.status)
         assertTrue(json.contains("demo-1"), json)
+        listOf(
+            "\"context_length\":200000",
+            "\"context_window\":200000",
+            "\"max_context_tokens\":200000",
+            "\"supports_tools\":true",
+            "\"supports_reasoning\":true",
+            "\"reasoning_levels\":[\"low\",\"high\",\"max\"]",
+        ).forEach { assertTrue(json.contains(it), json) }
+    }
+
+    @Test
+    fun `compact responses 路由使用 responses 协议`() = runTest {
+        val (gateway, _) = makeGateway(GatewayConfig())
+        gateway.refreshCatalog()
+        val body = """{"model":"demo-1","input":"hello"}"""
+        val result = gateway.handle(
+            request("/v1/responses/compact", method = "POST", body = body),
+        )
+        assertEquals(200, (result as HttpResult.Buffered).status)
     }
 
     @Test
