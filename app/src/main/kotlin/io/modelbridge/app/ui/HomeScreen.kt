@@ -40,8 +40,8 @@ import io.modelbridge.core.LanAddresses
  *
  * 对照原版「首页」的信息结构：运行状态、接入地址、访问密钥、
  * 累计请求 / 成功率 / 平均耗时。
- * 当前数据来自进程内统计（[io.modelbridge.app.GatewayRunner] 的日志），
- * 重启后清零；接入地址与密钥沿用原版的语义。
+ * 当前数据来自 GatewayRunner 的独立累计统计，按 SharedPreferences 持久化，
+ * 日志达到上限不影响统计；接入地址与密钥沿用原版的语义。
  */
 @Composable
 fun HomeScreen(
@@ -123,7 +123,7 @@ fun HomeScreen(
         SectionTitle("接入说明")
         InfoCard {
             Text(
-                text = "在 Agent 里把 API 地址填成上面的地址，API 路径填 /chat/completions（或 /responses、/messages），模型填「模型」页里任一模型 ID，密钥填状态页的访问密钥（未设置则随意）。\n\n" +
+                text = "在 Agent 里把 API 地址填 $localUrl，API 路径填 /chat/completions（或 /responses、/messages），模型填「上游」页里任一模型 ID，密钥填状态页的访问密钥（未设置则随意）。\n\n" +
                     "模型名带 `@上游昵称` 后缀（如 deepseek-v4.1-flash@猫爪），指定了后缀就只走那一家；不带后缀时由所有拥有该模型的上游按优先级轮流分担。\n\n" +
                     "请求先到达本 App，按模型选中对应本地网关，把命中的策略正文前置到请求里，再转发过去。日志页会记录每次实际命中的上游。",
                 fontSize = 13.sp,

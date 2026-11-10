@@ -117,7 +117,7 @@ fun PolicyScreen(vms: ViewModels, onBack: () -> Unit) {
         GroupTitle("导入")
         SettingsGroup {
             Text(
-                "点「从文件导入」选一个 .md 或 .txt，整篇作为一条策略、文件名作为名称，再确认后保存。\n\n导入后停在编辑页，可以改名称、绑模型。模型留空就是通用策略。",
+                "点「从文件导入」选一个 .md 或 .txt，整篇作为一条策略、文件名作为名称，再确认后保存。\n\n导入后停在编辑页，可以改名称、绑模型。模型留空就是通用策略，对所有转发的模型生效。",
                 fontSize = 13.sp,
                 lineHeight = 20.sp,
                 color = AppStyle.SubtitleText,
