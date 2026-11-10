@@ -8,6 +8,7 @@ import io.modelbridge.spi.Usage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -41,16 +42,181 @@ object WireProtocolAdapter {
         encodeDefaults = true
     }
 
-    fun decodeChatRequest(body: String, protocol: WireProtocol): ChatRequest = when (protocol) {
-        WireProtocol.Chat -> Mapper.toChatRequest(
-            json.decodeFromString(ChatCompletionRequest.serializer(), body),
-        )
-        WireProtocol.Responses -> decodeResponses(body)
-        WireProtocol.Messages -> decodeMessages(body)
+    fun decodeChatRequest(body: String, protocol: WireProtocol): ChatRequest {
+        val root = parseObject(body)
+        validateProtocolRequest(root, protocol)
+        return when (protocol) {
+            WireProtocol.Chat -> Mapper.toChatRequest(
+                json.decodeFromString(ChatCompletionRequest.serializer(), body),
+            )
+            WireProtocol.Responses -> decodeResponses(root)
+            WireProtocol.Messages -> decodeMessages(root)
+        }
     }
 
-    private fun decodeResponses(body: String): ChatRequest {
-        val root = parseObject(body)
+    private fun validateMessages(messages: JsonArray, protocol: WireProtocol) {
+        if (messages.isEmpty()) throw IllegalArgumentException("messages 必须是非空数组")
+        val pendingToolIds = mutableSetOf<String>()
+        val seenToolIds = mutableSetOf<String>()
+        messages.forEachIndexed { index, element ->
+            val message = element as? JsonObject ?: throw IllegalArgumentException("messages[$index] 必须是对象")
+            val role = message["role"].primitiveText().orEmpty().lowercase()
+            if (role !in setOf("system", "developer", "user", "assistant", "tool", "function", "model")) {
+                throw IllegalArgumentException("不支持的消息角色: $role")
+            }
+            val content = message["content"]
+            if (content != null && content !is JsonNull && content !is JsonPrimitive && content !is JsonArray) {
+                throw IllegalArgumentException("消息 content 必须是字符串、数组或 null")
+            }
+            if (content is JsonArray) {
+                content.forEach { block ->
+                    if (block !is JsonObject && block !is JsonPrimitive) {
+                        throw IllegalArgumentException("消息 content block 必须是对象或字符串")
+                    }
+                }
+            }
+            val toolCalls = message["tool_calls"] as? JsonArray
+            if (message.containsKey("tool_calls") && toolCalls == null) {
+                throw IllegalArgumentException("assistant.tool_calls 必须是数组")
+            }
+            if (role == "user" && (toolCalls != null || message.containsKey("tool_call_id"))) {
+                throw IllegalArgumentException("] 的 user 不允许携带工具字段")
+            }
+            if (role == "assistant" && toolCalls != null && content is JsonArray &&
+                content.any { it is JsonObject }
+            ) {
+                throw IllegalArgumentException("] 的 assistant 只允许文本与 tool_calls")
+            }
+            toolCalls?.forEach { call ->
+                val obj = call as? JsonObject ?: throw IllegalArgumentException("tool_call 必须是对象")
+                if (obj["type"].primitiveText() != "function") {
+                    throw IllegalArgumentException("] 只支持 type=function")
+                }
+                val id = obj["id"].primitiveText()
+                    ?: throw IllegalArgumentException("tool_call 缺少 id")
+                if (!seenToolIds.add(id)) {
+                    throw IllegalArgumentException("] 重复的 tool_call_id: $id")
+                }
+                val function = obj["function"] as? JsonObject
+                    ?: throw IllegalArgumentException("tool_call 缺少 function.")
+                if (function["name"].primitiveText().isNullOrBlank()) {
+                    throw IllegalArgumentException("tool_call 缺少 function.name")
+                }
+                val arguments = function["arguments"] as? JsonPrimitive
+                    ?: throw IllegalArgumentException("].function.arguments 必须是 JSON 对象字符串")
+                runCatching { json.parseToJsonElement(arguments.content).jsonObject }
+                    .getOrElse { throw IllegalArgumentException("].function.arguments 必须是 JSON 对象") }
+                pendingToolIds += id
+            }
+            if (role == "tool" || role == "function") {
+                val callId = message["tool_call_id"].primitiveText()
+                    ?: throw IllegalArgumentException("] tool_call_id 缺失")
+                if (callId !in pendingToolIds) {
+                    throw IllegalArgumentException("] 的 tool_call_id 没有待响应的 assistant tool_call")
+                }
+                pendingToolIds -= callId
+            }
+        }
+        if (protocol == WireProtocol.Messages && messages.all { element ->
+                (element as? JsonObject)?.get("role").primitiveText()?.lowercase() in setOf("system", "developer")
+            }
+        ) {
+            throw IllegalArgumentException("system/developer 之外至少需要一条对话消息")
+        }
+    }
+
+    /**
+     * 3.10.0 dex 列出了三个协议的请求校验错误与扩展参数取值限制。
+     * 这里只校验本地转换即可确定的字段；tools/tool_calls 的完整会话语义仍由上游决定。
+     */
+    private fun validateProtocolRequest(root: JsonObject, protocol: WireProtocol) {
+        val messages = when (protocol) {
+            WireProtocol.Chat -> root["messages"] as? JsonArray
+            WireProtocol.Messages -> root["messages"] as? JsonArray
+            WireProtocol.Responses -> {
+                val input = root["input"]
+                if (input is JsonArray && input.all { it is JsonObject }) input else null
+            }
+        }
+        messages?.let { validateMessages(it, protocol) }
+        root["tools"]?.let { tools ->
+            if (tools !is JsonArray) throw IllegalArgumentException("tools 必须是数组")
+            tools.forEach { tool ->
+                val obj = tool as? JsonObject ?: throw IllegalArgumentException("tool 必须是对象")
+                val function = obj["function"] as? JsonObject
+                    ?: throw IllegalArgumentException("tool.function 必须是对象")
+                if (obj["type"].primitiveText() != "function") {
+                    throw IllegalArgumentException("] 只支持 type=function")
+                }
+                if (function["name"].primitiveText().isNullOrBlank()) {
+                    throw IllegalArgumentException("].function.name 无效")
+                }
+                function["parameters"]?.let { parameters ->
+                    if (parameters !is JsonObject) {
+                        throw IllegalArgumentException("].function.parameters 必须是 JSON Schema 对象")
+                    }
+                }
+                function["strict"]?.let { strict ->
+                    if (strict !is JsonPrimitive || strict.contentOrNull?.toBooleanStrictOrNull() == null) {
+                        throw IllegalArgumentException("].function.strict 必须是布尔值")
+                    }
+                    if (strict.contentOrNull?.toBooleanStrictOrNull() == true) {
+                        throw IllegalArgumentException("].function.strict=true 暂不支持")
+                    }
+                }
+            }
+        }
+        if (protocol == WireProtocol.Chat) {
+            root["tool_choice"]?.let { choice ->
+                if (choice is JsonObject) {
+                    val type = choice["type"].primitiveText()
+                    if (type == "function") {
+                        val function = choice["function"] as? JsonObject
+                        val name = function?.get("name").primitiveText()
+                        if (name == null) throw IllegalArgumentException("tool_choice 指定的工具不存在")
+                    }
+                }
+            }
+        } else {
+            val reasoningEffort = root["reasoning_effort"].primitiveText()
+            ?: (root["reasoning"] as? JsonObject)?.get("effort").primitiveText()
+            if (reasoningEffort != null && reasoningEffort !in setOf("low", "high", "max")) {
+                throw IllegalArgumentException("reasoning_effort 仅支持 low / high / max")
+            }
+            root["parallel_tool_calls"]?.let { value ->
+                if (value !is JsonPrimitive || value.contentOrNull?.toBooleanStrictOrNull() == null) {
+                    throw IllegalArgumentException("parallel_tool_calls 必须是布尔值")
+                }
+            }
+            root["tool_choice"]?.let { choice ->
+                val name = when (choice) {
+                    is JsonPrimitive -> choice.contentOrNull
+                    is JsonObject -> {
+                        if (choice.keys.any { it !in setOf("type", "function", "name") }) {
+                            throw IllegalArgumentException("tool_choice 包含不允许的字段")
+                        }
+                        (choice["name"] ?: choice["function"]).toolChoice()
+                    }
+                    else -> throw IllegalArgumentException("tool_choice 只支持 auto、none、required 或指定 function")
+                }
+                if (name.isNullOrBlank() || (name !in setOf("auto", "none", "required") && choice !is JsonObject)) {
+                    throw IllegalArgumentException("tool_choice 只支持 auto、none、required 或指定 function")
+                }
+            }
+        }
+        if (protocol == WireProtocol.Messages) {
+            root["context_window"]?.let {
+                throw IllegalArgumentException("不支持 context_window 参数")
+            }
+        } else {
+            val window = root["context_window"].primitiveText()
+            if (window != null && window !in setOf("200K", "500K", "1M")) {
+                throw IllegalArgumentException("context_window 仅支持 200K / 500K / 1M")
+            }
+        }
+    }
+
+    private fun decodeResponses(root: JsonObject): ChatRequest {
         val messages = mutableListOf<ChatMessage>()
         val instructions = root["instructions"].text()
         if (instructions.isNotBlank()) messages += system(instructions)
@@ -89,8 +255,7 @@ object WireProtocolAdapter {
         )
     }
 
-    private fun decodeMessages(body: String): ChatRequest {
-        val root = parseObject(body)
+    private fun decodeMessages(root: JsonObject): ChatRequest {
         val messages = mutableListOf<ChatMessage>()
         val systemText = root["system"].multiText()
         if (systemText.isNotBlank()) messages += system(systemText)
@@ -279,6 +444,9 @@ object WireProtocolAdapter {
     private fun parseObject(body: String): JsonObject =
         runCatching { json.parseToJsonElement(body).jsonObject }
             .getOrElse { throw IllegalArgumentException("请求体不是 JSON 对象，无法应用协议转换") }
+
+    private fun JsonElement?.primitiveText(): String? =
+        (this as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
 
     private fun system(text: String) = message("system", text)
     private fun user(text: String) = message("user", text)
