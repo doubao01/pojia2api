@@ -90,14 +90,19 @@ fun ModelsScreen(vms: ViewModels) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val accounts = vms.accounts.collectAsState().value
                         Text(
-                            "还没有登录账号",
+                            text = if (accounts.none { it.enabled }) "还没有登录账号" else "还没有可用模型",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = AppStyle.BodyText,
                         )
                         Text(
-                            "到「供应商」页点「登录账号」添加",
+                            text = if (accounts.none { it.enabled }) {
+                                "到「供应商」页点「登录账号」添加"
+                            } else {
+                                "已登录但没有拉到模型，打开「日志」看具体原因"
+                            },
                             fontSize = 12.sp,
                             color = AppStyle.SubtitleText,
                             modifier = Modifier.padding(top = 4.dp),

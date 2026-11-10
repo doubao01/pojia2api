@@ -36,6 +36,8 @@ class UiCopyContractTest {
 
         val settings = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/SettingsScreen.kt").readText()
         val homeLayout = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/HomeScreen.kt").readText()
+        val models = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/ModelsScreen.kt").readText()
+        val logs = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/LogScreen.kt").readText()
         assertTrue(settings.contains("统计已重置"))
         assertTrue(settings.contains("已导入 "))
         assertTrue(homeLayout.contains("StatPairRow"))
@@ -43,6 +45,11 @@ class UiCopyContractTest {
         assertTrue(homeLayout.contains("rightLabel = \"成功率\""))
         assertTrue(homeLayout.contains("leftLabel = \"缓存命中率\""))
         assertTrue(homeLayout.contains("rightLabel = \"平均耗时\""))
+        assertTrue(logs.contains("最近 "))
+        assertTrue(logs.contains(" 条 · 新的在上"))
+        assertTrue(logs.contains("暂无日志"))
+        assertTrue(models.contains("还没有可用模型"))
+        assertTrue(models.contains("已登录但没有拉到模型，打开「日志」看具体原因"))
     }
 
     private fun findProjectRoot(): File {
