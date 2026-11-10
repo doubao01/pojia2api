@@ -153,7 +153,7 @@ class Gateway(
                 request.path == "/v1/messages" || request.path == "/messages" ->
                     chat(request, WireProtocol.Messages)
                 else -> error(
-                    GatewayError.NotFound("未知路径：${request.path}"),
+                    GatewayError.NotFound("Unknown endpoint: ${request.path}"),
                 )
             }
         } catch (e: GatewayError) {
@@ -191,7 +191,7 @@ class Gateway(
         }.orEmpty()
 
         if (token.isEmpty() || token !in config.apiKeys) {
-            throw GatewayError.Unauthorized()
+            throw GatewayError.Unauthorized("A valid proxy API key is required")
         }
     }
 
@@ -199,7 +199,7 @@ class Gateway(
     private fun serviceInfo(): HttpResult = HttpResult.Buffered(
         status = 200,
         headers = corsHeaders(),
-        body = """{"service":"modelbridge","endpoints":["/v1/models","/v1/chat/completions","/v1/responses","/v1/responses/compact","/v1/messages","/models","/chat/completions","/responses","/messages","/health"]}"""
+        body = """{"service":"pojia2api","endpoints":["/v1/models","/v1/chat/completions","/v1/responses","/v1/messages","/models","/chat/completions","/responses","/messages","/health"]}"""
             .toByteArray(StandardCharsets.UTF_8),
     )
 
@@ -511,7 +511,8 @@ class Gateway(
     private fun error(e: GatewayError): HttpResult {
         val body = Mapper.errorBody(
             message = e.message ?: "错误",
-            type = e.errorType,
+            // 3.10.0 `p007h/s.j()` 的对外错误类型固定为 proxy_error。
+            type = "proxy_error",
         )
         val headers = corsHeaders().toMutableMap()
         if (e is GatewayError.UpstreamUnavailable && e.retryAfterSeconds != null) {

@@ -111,11 +111,10 @@ class GatewayTest {
 
         assertEquals(200, result.status)
         listOf(
-            "\"service\":\"modelbridge\"",
+            "\"service\":\"pojia2api\"",
             "/v1/models",
             "/v1/chat/completions",
             "/v1/responses",
-            "/v1/responses/compact",
             "/v1/messages",
             "/models",
             "/health",
@@ -153,10 +152,25 @@ class GatewayTest {
     }
 
     @Test
-    fun `未知路径返回 404`() = runTest {
+    fun `未知路径按原版返回 404 和 proxy_error`() = runTest {
         val (gateway, _) = makeGateway(GatewayConfig())
-        val result = gateway.handle(request("/nope"))
-        assertEquals(404, (result as HttpResult.Buffered).status)
+        val result = gateway.handle(request("/nope")) as HttpResult.Buffered
+        val body = result.body.decodeToString()
+
+        assertEquals(404, result.status)
+        assertTrue(body.contains("Unknown endpoint: /nope"), body)
+        assertTrue(body.contains("\"type\":\"proxy_error\""), body)
+    }
+
+    @Test
+    fun `缺少访问密钥按原版返回 401 文案`() = runTest {
+        val (gateway, _) = makeGateway(GatewayConfig(apiKeys = setOf("secret")))
+        val result = gateway.handle(request("/v1/models")) as HttpResult.Buffered
+        val body = result.body.decodeToString()
+
+        assertEquals(401, result.status)
+        assertTrue(body.contains("A valid proxy API key is required"), body)
+        assertTrue(body.contains("\"type\":\"proxy_error\""), body)
     }
 
     @Test
