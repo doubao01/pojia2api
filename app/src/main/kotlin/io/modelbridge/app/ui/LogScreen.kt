@@ -119,11 +119,19 @@ private fun LogCard(entry: LogEntry) {
                     color = statusColor,
                 )
             }
-            if (entry.costMillis > 0 || entry.message != null) {
+            val details = buildList {
+                if (entry.costMillis > 0) add("${entry.costMillis} ms")
+                entry.upstreamId?.takeIf { it.isNotBlank() }?.let { add("上游：$it") }
+                entry.message?.takeIf { it.isNotBlank() }?.let { add(it) }
+                if (entry.promptTokens > 0 || entry.completionTokens > 0 || entry.cachedTokens > 0) {
+                    add("输入 ${entry.promptTokens} · 输出 ${entry.completionTokens} · 缓存 ${entry.cachedTokens}")
+                }
+            }
+            if (details.isNotEmpty()) {
                 Text(
-                    text = entry.message ?: "${entry.costMillis} ms",
+                    text = details.joinToString(" · "),
                     fontSize = 11.sp,
-                    color = if (entry.message != null) AppStyle.Accent else AppStyle.SubtitleText,
+                    color = AppStyle.SubtitleText,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }

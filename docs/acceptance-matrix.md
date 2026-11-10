@@ -34,7 +34,7 @@
 | 模型页筛选与空态 | `ModelsScreen` 支持「全部供应商」/指定供应商筛选，显示「共 N 个模型」；按账号与拉取状态区分「还没有可用模型」「没有供应商提供模型」「已登录但没有拉到模型」 | `ModelFilterTest`（2 项）、`UiCopyContractTest`、CI APK |
 | 任务/额度入口与页面 | 首页「任务管理」与「账号管理」分别进入独立页面模式；任务管理显示一键签到、一键任务、任务列表、额度汇总，账号管理逐账号显示可用积分、额度详情、今日签到状态和单账号动作；`AccountServiceRegistry` 已按静态契约接入多家供应商，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | `AccountCenterModeContractTest`、账号业务测试（29 项）、3.9.3 反编译契约、CI APK；真实供应商接口与像素布局未验证 |
 | 账号业务与逐账号积分/签到 | `providerGroups` 与独立账号管理页均按 CREDIT_REFRESH/CHECKIN 显示真实可用积分、额度详情、今日已签到/未签到，提供单账号「刷新积分」「签到」；账号行显示国内/国际版、启用中、N 天后到期自动续期；本地签到状态按 Asia/Shanghai 自然日持久化；账号管理页按自然日自动检测一次账号可用性并显示连通结果 | `AccountDailyCheckinTest`（2 项）、`AccountHealthScheduleTest`（3 项）、`AccountStatusFormatTest`（3 项）、`AccountCenterModeContractTest`、账号业务测试、CI APK；真实服务端签到未验证 |
-| 日志页清空按钮 | `LogScreen` 提供清空按钮、空态「暂无日志」，副标题按原版显示「最近 N 条」；`GatewayRunner.clearLog` 清空内存日志 | `UiCopyContractTest`、CI APK |
+| 日志页清空按钮 | `LogScreen` 提供清空按钮、空态「暂无日志」，副标题按原版显示「最近 N 条」；每条日志显示耗时、实际命中的上游、策略/指纹诊断与 token 用量；`GatewayRunner.clearLog` 清空内存日志、保留累计统计 | `UiCopyContractTest`、CI APK |
 | 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 dex 与 3.9.3 `z/g.java` 规则清理计费头、Claude/Codex/ZCode/DS Harness 身份句、模板句和空模板参数；身份句按原版替换为中性表述而不误删；网关记录规则级诊断，解析失败回退原文；模型和工具参数保留 | `ClientFingerprintStripperTest`（9 项）、CI APK；请求头指纹规则因静态规则表被 JADX 截断尚未完整复刻 |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |
 | 多协议 HTTP 入口 | `/chat/completions`、`/responses`、`/messages` 与对应 `/v1` 路径；策略注入按协议写入 system / instructions / system；responses/messages 的 reasoning_effort、context_window、parallel_tool_calls、top_k、thinking、metadata、tool_choice 等扩展字段按原始 JSON 类型透传 | `WireProtocolGatewayTest`、`WireProtocolAdapterTest`（2 项）、`ExtrasForwardingTest`、CI APK |
