@@ -247,6 +247,7 @@ fun TextRow(
     hint: String? = null,
     placeholder: String = "",
     masked: Boolean = false,
+    multiline: Boolean = false,
     onValueChange: (String) -> Unit,
 ) {
     var editing by remember { mutableStateOf(false) }
@@ -271,7 +272,8 @@ fun TextRow(
                     OutlinedTextField(
                         value = text,
                         onValueChange = { text = it },
-                        singleLine = true,
+                        singleLine = !multiline,
+                        minLines = if (multiline) 3 else 1,
                         placeholder = { Text(placeholder, fontSize = 14.sp) },
                         modifier = Modifier.fillMaxWidth(),
                     )

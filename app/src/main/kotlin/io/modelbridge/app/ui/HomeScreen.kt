@@ -56,7 +56,15 @@ fun HomeScreen(
     val stats = vms.runner.stats.collectAsState()
     val models by vms.models.collectAsState()
     val settings by vms.settings.collectAsState()
-    val accessKey = settings.accessKey
+    val accessKeys = buildList {
+        if (settings.accessKey.isNotBlank()) add(settings.accessKey)
+        addAll(settings.extraAccessKeys.filter { it.isNotBlank() })
+    }.distinct()
+    val accessKeySummary = when {
+        accessKeys.isEmpty() -> "未设置，本机任意客户端可访问"
+        accessKeys.size == 1 -> "已设置"
+        else -> "已设置 ${accessKeys.size} 个密钥"
+    }
 
     val total = stats.value.total
     val ok = stats.value.success
@@ -117,7 +125,7 @@ fun HomeScreen(
             CopyRow("仅本机", localUrl, running)
             InfoRow(
                 "访问密钥",
-                accessKey.ifBlank { "未设置，本机任意客户端可访问" },
+                accessKeySummary,
             )
         }
 

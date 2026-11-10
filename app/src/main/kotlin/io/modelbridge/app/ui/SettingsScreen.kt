@@ -61,6 +61,20 @@ fun SettingsScreen(vms: ViewModels) {
                 masked = true,
                 onValueChange = { vms.updateSettings { s -> s.copy(accessKey = it) } },
             )
+            RowDivider()
+            TextRow(
+                label = "+ 添加密钥",
+                value = settings.extraAccessKeys.joinToString("\n"),
+                hint = "每行一个附加密钥",
+                placeholder = "每行一个密钥",
+                masked = true,
+                multiline = true,
+                onValueChange = { value ->
+                    vms.updateSettings { s ->
+                        s.copy(extraAccessKeys = value.lines().map { it.trim() }.filter { it.isNotEmpty() })
+                    }
+                },
+            )
         }
 
         // ---------------- 调度 ----------------

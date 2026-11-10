@@ -22,6 +22,8 @@ data class GatewaySettings(
     val allowLan: Boolean = false,
     /** 访问密钥，空表示不校验。 */
     val accessKey: String = "",
+    /** 3.10.0 `D/d.G()` 启用的附加访问密钥；主密钥仍保存在 [accessKey]。 */
+    val extraAccessKeys: List<String> = emptyList(),
 
     // ---------- 调度 ----------
     /** 单次请求的最大重试次数，3.10.0 范围 0–10。 */
@@ -62,6 +64,7 @@ data class GatewaySettings(
         requestTimeoutSeconds = requestTimeoutSeconds.coerceIn(10, 1800),
         logLimit = logLimit.coerceIn(50, 5_000),
         floatingBallSizeDp = floatingBallSizeDp.coerceIn(1, 96),
+        extraAccessKeys = extraAccessKeys.map { it.trim() }.filter { it.isNotEmpty() }.distinct(),
     )
 }
 
@@ -91,6 +94,7 @@ class SettingsStore(
             putInt(K_PORT, safe.port)
             putBoolean(K_ALLOW_LAN, safe.allowLan)
             putString(K_ACCESS_KEY, safe.accessKey)
+            putString(K_EXTRA_ACCESS_KEYS, safe.extraAccessKeys.joinToString("\n"))
             putInt(K_MAX_RETRIES, safe.maxRetries)
             putInt(K_FAILURE_THRESHOLD, safe.failureThreshold)
             putInt(K_COOLDOWN, safe.cooldownSeconds)
@@ -121,6 +125,11 @@ class SettingsStore(
             port = prefs.getInt(K_PORT, d.port),
             allowLan = prefs.getBoolean(K_ALLOW_LAN, d.allowLan),
             accessKey = prefs.getString(K_ACCESS_KEY, d.accessKey) ?: "",
+            extraAccessKeys = prefs.getString(K_EXTRA_ACCESS_KEYS, "")
+                ?.lines()
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?: emptyList(),
             maxRetries = prefs.getInt(K_MAX_RETRIES, d.maxRetries),
             failureThreshold = prefs.getInt(K_FAILURE_THRESHOLD, d.failureThreshold),
             cooldownSeconds = prefs.getInt(K_COOLDOWN, d.cooldownSeconds),
@@ -137,6 +146,7 @@ class SettingsStore(
         const val K_PORT = "mb_port"
         const val K_ALLOW_LAN = "mb_allow_lan"
         const val K_ACCESS_KEY = "mb_access_key"
+        const val K_EXTRA_ACCESS_KEYS = "mb_extra_access_keys"
         const val K_MAX_RETRIES = "mb_max_retries"
         const val K_FAILURE_THRESHOLD = "mb_failure_threshold"
         const val K_COOLDOWN = "mb_cooldown_seconds"

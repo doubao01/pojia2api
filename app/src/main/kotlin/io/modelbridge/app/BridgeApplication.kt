@@ -174,10 +174,10 @@ class AppContainer(private val app: Application) {
     private fun buildConfig(): GatewayConfig {
         val s = settings.current()
         return GatewayConfig(
-            apiKeys = s.accessKey
-                .takeIf { it.isNotBlank() }
-                ?.let { setOf(it) }
-                ?: emptySet(),
+            apiKeys = buildSet {
+                s.accessKey.takeIf { it.isNotBlank() }?.let { add(it) }
+                addAll(s.extraAccessKeys)
+            },
             maxRetries = s.maxRetries,
             requestTimeoutSeconds = s.requestTimeoutSeconds,
             stripClientFingerprint = s.stripClientFingerprint,
