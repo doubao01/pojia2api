@@ -72,7 +72,7 @@ fun AccountsScreen(vms: ViewModels) {
         SettingsGroup {
             ActionRow(
                 label = "导入账号",
-                hint = "从 JSON 文件追加账号（同一 id 覆盖）",
+                hint = "从 JSON 文件读取",
                 onClick = {
                     transfer.importAccounts { list -> vms.importAccounts(list) }
                 },
@@ -80,10 +80,10 @@ fun AccountsScreen(vms: ViewModels) {
             RowDivider()
             ActionRow(
                 label = "导出账号",
-                hint = "把当前 ${accounts.size} 个账号存成 JSON",
+                hint = "保存为 JSON 文件",
                 onClick = {
                     if (accounts.isEmpty()) {
-                        vms.toast("还没有账号可导出")
+                        vms.toast("还没有登录账号")
                     } else {
                         transfer.exportAccounts(accounts)
                     }
@@ -91,9 +91,9 @@ fun AccountsScreen(vms: ViewModels) {
             )
             RowDivider()
             ActionRow(
-                label = if (scanning) "扫描中…" else "扫描本机端口",
+                label = if (scanning) "探测 127.0.0.1 端口…" else "扫描本机端口",
                 hint = if (scanned.isEmpty()) {
-                    "查找本机在跑的其它网关实例"
+                    "扫描本机端口自动发现，或手动添加任意 OpenAI 兼容地址"
                 } else {
                     "发现：${scanned.joinToString(", ") { ":$it" }}"
                 },
@@ -233,7 +233,7 @@ private fun ProviderCard(
             // ---- 账号列表 ----
             if (group.accounts.isEmpty()) {
                 Text(
-                    text = "还没有账号",
+                    text = "还没有登录账号",
                     fontSize = 12.sp,
                     color = AppStyle.SubtitleText,
                     modifier = Modifier.padding(top = 8.dp),
@@ -330,7 +330,7 @@ private fun AccountRow(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            TextButton(onClick = onCheck) { Text("检测", fontSize = 12.sp) }
+            TextButton(onClick = onCheck) { Text("检测连通性", fontSize = 12.sp) }
             TextButton(onClick = onEdit) { Text("编辑", fontSize = 12.sp) }
             TextButton(onClick = { selectPolicy = true }) { Text("策略", fontSize = 12.sp) }
             TextButton(onClick = { confirmDelete = true }) {

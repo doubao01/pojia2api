@@ -52,7 +52,7 @@ fun ModelsScreen(vms: ViewModels) {
                     color = AppStyle.BodyText,
                 )
                 Text(
-                    "${models.value.size} 个可调用",
+                    "${models.value.size} 个模型",
                     fontSize = 12.sp,
                     color = AppStyle.SubtitleText,
                     modifier = Modifier.padding(top = 2.dp),
@@ -62,7 +62,7 @@ fun ModelsScreen(vms: ViewModels) {
                 onClick = { vms.refreshModels() },
                 shape = RoundedCornerShape(10.dp),
             ) {
-                Text("刷新", fontSize = 13.sp)
+                Text("拉取模型", fontSize = 13.sp)
             }
         }
 
@@ -75,7 +75,7 @@ fun ModelsScreen(vms: ViewModels) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(strokeWidth = 2.dp)
                         Text(
-                            "正在拉取模型...",
+                            "正在从各供应商拉取模型目录",
                             fontSize = 12.sp,
                             color = AppStyle.SubtitleText,
                             modifier = Modifier.padding(top = 8.dp),
@@ -91,13 +91,13 @@ fun ModelsScreen(vms: ViewModels) {
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "还没有可用模型",
+                            "还没有登录账号",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = AppStyle.BodyText,
                         )
                         Text(
-                            "先到「供应商」页启用一个",
+                            "到「供应商」页点「登录账号」添加",
                             fontSize = 12.sp,
                             color = AppStyle.SubtitleText,
                             modifier = Modifier.padding(top = 4.dp),
