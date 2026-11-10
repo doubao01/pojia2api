@@ -33,6 +33,7 @@ import java.util.Locale
 @Composable
 fun LogScreen(vms: ViewModels) {
     val entries = vms.log.collectAsState()
+    val logLimit = vms.settings.collectAsState().value.logLimit
 
     // 只渲染最近 200 条，既够用又不会让外层滚动卡顿
     val visible = entries.value.takeLast(200).asReversed()
@@ -50,7 +51,7 @@ fun LogScreen(vms: ViewModels) {
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
             Text(
-                "${entries.value.size} 条（最近 500 条）· 新的在上",
+                "${entries.value.size} 条（最近 $logLimit 条）· 新的在上",
                 fontSize = 12.sp,
                 color = AppStyle.SubtitleText,
                 modifier = Modifier.padding(top = 2.dp),
@@ -66,7 +67,7 @@ fun LogScreen(vms: ViewModels) {
 
         if (visible.isEmpty()) {
             Text(
-                text = "还没有请求记录",
+                text = "暂无日志",
                 fontSize = 13.sp,
                 color = AppStyle.SubtitleText,
                 modifier = Modifier.padding(top = 32.dp),
