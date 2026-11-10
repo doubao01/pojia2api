@@ -17,7 +17,7 @@
 - chat 注入为独立 system 消息，保留客户端原有消息。
 - 注入器还支持 responses 的 instructions，以及 messages 的 system 文本/内容块数组，保留原内容块和缓存标记。
 - 网关已开放 chat、responses、messages 三个 HTTP 入口；策略注入分别写入独立 system 消息、`instructions` 和 `system`，保留客户端原有内容。
-- 策略库本机保存；匹配的策略正文随请求发给用户配置的上游，不向其他服务同步。
+- 策略库本机保存；匹配的策略正文随请求发给用户配置的上游，不向其他服务同步。访问日志只记录策略名称、注入失败原因、指纹规则诊断；诊断、上游异常和启动失败文字经 `LogRedactor` 脱敏，`LogRedactorTest` 覆盖 Bearer、Cookie、凭据、提示正文、转义 JSON 与截断边界。
 
 示例策略（没有真实密钥或账号）：
 

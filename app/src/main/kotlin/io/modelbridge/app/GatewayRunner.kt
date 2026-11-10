@@ -5,6 +5,7 @@ import io.modelbridge.app.prefs.SettingsStore
 import io.modelbridge.app.prefs.StatsStore
 import io.modelbridge.core.GatewayCounters
 import io.modelbridge.core.Gateway
+import io.modelbridge.core.LogRedactor
 import io.modelbridge.core.http.HttpServer
 import io.modelbridge.providers.auth.CredentialRefreshSummary
 import io.modelbridge.spi.Usage
@@ -124,7 +125,7 @@ class GatewayRunner(
                             path = request.path,
                             status = statusOf(result),
                             costMillis = cost,
-                            message = diagnostics,
+                            message = LogRedactor.redact(diagnostics),
                             upstreamId = gateway.lastUpstreamId,
                         ),
                     )
@@ -136,7 +137,7 @@ class GatewayRunner(
                             method = request.method,
                             path = request.path,
                             status = 500,
-                            message = error.message,
+                            message = LogRedactor.redact(error.message),
                             costMillis = 0,
                         ),
                     )
@@ -167,7 +168,7 @@ class GatewayRunner(
             }
             _port.value
         } catch (e: Exception) {
-            val msg = e.message ?: e::class.java.simpleName
+            val msg = LogRedactor.redact(e.message ?: e::class.java.simpleName) ?: "未知错误"
             _lastError.value = msg
             append(
                 LogEntry(
