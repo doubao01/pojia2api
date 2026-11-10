@@ -74,7 +74,7 @@ class GatewayTest {
     @Test
     fun `配置 key 后缺少 key 返回 401`() = runTest {
         val (gateway, _) = makeGateway(GatewayConfig(apiKeys = setOf("secret")))
-        val result = gateway.handle(request("/health"))
+        val result = gateway.handle(request("/v1/models"))
         assertEquals(401, (result as HttpResult.Buffered).status)
     }
 
@@ -82,14 +82,25 @@ class GatewayTest {
     fun `配置 key 后错误 key 返回 401`() = runTest {
         val (gateway, _) = makeGateway(GatewayConfig(apiKeys = setOf("secret")))
         val result = gateway.handle(request("/health", key = "wrong"))
-        assertEquals(401, (result as HttpResult.Buffered).status)
+        assertEquals(200, (result as HttpResult.Buffered).status)
     }
 
     @Test
     fun `正确 key 通过鉴权`() = runTest {
         val (gateway, _) = makeGateway(GatewayConfig(apiKeys = setOf("secret")))
-        val result = gateway.handle(request("/health", key = "secret"))
+        val result = gateway.handle(request("/v1/models", key = "secret"))
         assertEquals(200, (result as HttpResult.Buffered).status)
+    }
+
+    @Test
+    fun `配置 key 后模型和对话端点仍要求鉴权`() = runTest {
+        val (gateway, _) = makeGateway(GatewayConfig(apiKeys = setOf("secret")))
+        assertEquals(401, (gateway.handle(request("/v1/models")) as HttpResult.Buffered).status)
+        assertEquals(200, (gateway.handle(request("/")) as HttpResult.Buffered).status)
+        assertEquals(
+            401,
+            (gateway.handle(request("/v1/chat/completions", method = "POST")) as HttpResult.Buffered).status,
+        )
     }
 
     @Test

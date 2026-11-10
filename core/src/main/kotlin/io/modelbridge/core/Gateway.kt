@@ -137,7 +137,8 @@ class Gateway(
         }
 
         return try {
-            authenticate(request)
+            // 3.10.0 `D/a.java`：根路径与健康检查公开；模型清单与对话入口校验密钥。
+            if (request.path != "/" && request.path != "/health") authenticate(request)
             when {
                 request.path == "/" -> serviceInfo()
                 request.path == "/health" -> health()
@@ -202,9 +203,8 @@ class Gateway(
             .toByteArray(StandardCharsets.UTF_8),
     )
 
-    private suspend fun health(): HttpResult {
-        val models = router.knownModels()
-        val body = """{"status":"ok","service":"modelbridge","providers":${registry.size},"models":${models.size}}"""
+    private fun health(): HttpResult {
+        val body = """{"status":"ok"}"""
         return HttpResult.Buffered(
             status = 200,
             headers = corsHeaders(),
