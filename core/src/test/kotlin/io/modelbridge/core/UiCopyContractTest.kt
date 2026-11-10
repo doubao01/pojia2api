@@ -70,6 +70,8 @@ class UiCopyContractTest {
         assertTrue(logs.contains("上游："))
         assertTrue(logs.contains("entry.upstreamId"))
         assertTrue(models.contains("还没有可用模型"))
+        assertTrue(models.contains("正在加载模型…"))
+        assertTrue(models.contains("正在从各供应商拉取模型目录"))
         assertTrue(models.contains("已登录但没有拉到模型，打开「日志」看具体原因"))
         assertTrue(models.contains("全部供应商"))
         assertTrue(models.contains("共 "))

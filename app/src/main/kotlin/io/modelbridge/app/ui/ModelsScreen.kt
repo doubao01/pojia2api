@@ -107,6 +107,13 @@ fun ModelsScreen(vms: ViewModels) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(strokeWidth = 2.dp)
                         Text(
+                            "正在加载模型…",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = AppStyle.BodyText,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        Text(
                             "正在从各供应商拉取模型目录",
                             fontSize = 12.sp,
                             color = AppStyle.SubtitleText,
