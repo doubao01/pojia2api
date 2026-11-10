@@ -5,8 +5,8 @@
 ## 最近验证
 
 - 本地 JVM 回归：core 84、providers 88，失败 0。
-- GitHub Actions：run #35—#52 均为 `内核测试 success`、`构建 APK success`；其中 #49/#50/#52 为文档提交，#51（任务管理/账号管理页面拆分）地址 `https://github.com/doubao01/pojia2api/actions/runs/42837646422`。
-- 最近主分支提交：`0a11861`。
+- GitHub Actions：run #35—#52 与 #57 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
+- 最近主分支提交：`9336437`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
 ## 功能矩阵
