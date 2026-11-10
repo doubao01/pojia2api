@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +48,7 @@ fun AccountsScreen(vms: ViewModels) {
     val checks by vms.checks.collectAsState()
     val accounts by vms.accounts.collectAsState()
     val credits by vms.accountCredits.collectAsState()
+    val customRelays by vms.customRelays.collectAsState()
     val scanned by vms.scannedPorts.collectAsState()
     val scanning by vms.scanning.collectAsState()
     val context = LocalContext.current
@@ -54,6 +57,15 @@ fun AccountsScreen(vms: ViewModels) {
     LaunchedEffect(accountIds) { accountIds.forEach { vms.refreshAccountCredit(it) } }
 
     var editing by remember { mutableStateOf<AccountEdit?>(null) }
+    var showScanResults by remember { mutableStateOf(false) }
+    val selectedGateways = remember { mutableStateMapOf<Int, Boolean>() }
+    LaunchedEffect(scanned) {
+        scanned.forEach { gateway ->
+            if (gateway.port !in selectedGateways) selectedGateways[gateway.port] = true
+        }
+        selectedGateways.keys.filterNot { port -> scanned.any { it.port == port } }
+            .forEach(selectedGateways::remove)
+    }
     var webLogin by remember { mutableStateOf<AccountEdit?>(null) }
     var deviceLogin by remember { mutableStateOf<Provider?>(null) }
     var loomyLogin by remember { mutableStateOf(false) }
@@ -102,10 +114,60 @@ fun AccountsScreen(vms: ViewModels) {
                 } else if (scanned.isEmpty()) {
                     "扫描本机端口自动发现，或手动添加任意 OpenAI 兼容地址"
                 } else {
-                    "发现：${scanned.joinToString(", ") { "127.0.0.1:$it" }}"
+                    "发现：${scanned.joinToString(", ") { it.display }}"
                 },
                 onClick = { if (!scanning) vms.scanLocalPorts() },
             )
+            if (!scanning && scanned.isNotEmpty()) {
+                RowDivider()
+                ActionRow(
+                    label = "发现 ${scanned.size} 个网关",
+                    value = "加入",
+                    hint = "选择要加入的自定义中转站",
+                    onClick = { showScanResults = true },
+                )
+            }
+        }
+
+        GroupTitle("自定义中转站")
+        SettingsGroup {
+            if (customRelays.isEmpty()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("还没有中转站", fontSize = 14.sp, color = AppStyle.BodyText)
+                    Text(
+                        "扫描本机端口自动发现，或手动添加任意 OpenAI 兼容地址",
+                        fontSize = 12.sp,
+                        color = AppStyle.SubtitleText,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            } else {
+                customRelays.forEachIndexed { index, relay ->
+                    if (index > 0) RowDivider()
+                    RelayRow(
+                        relay = relay,
+                        checked = checks[relay.id],
+                        onToggle = { vms.toggleAccount(relay.id, it) },
+                        onCheck = { vms.checkAccount(relay) },
+                        onDelete = { vms.deleteAccount(relay.id) },
+                    )
+                }
+            }
+            RowDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                TextButton(onClick = { if (!scanning) vms.scanLocalPorts() }) {
+                    Text("扫描本机端口", fontSize = 12.sp)
+                }
+                TextButton(onClick = {
+                    vms.customRelayProvider()?.let { editing = AccountEdit(provider = it) }
+                }) { Text("手动添加", fontSize = 12.sp) }
+                TextButton(onClick = {
+                    customRelays.forEach { vms.checkAccount(it) }
+                }) { Text("检测连通性", fontSize = 12.sp) }
+            }
         }
 
         GroupTitle("供应商")
@@ -130,18 +192,53 @@ fun AccountsScreen(vms: ViewModels) {
         }
     }
 
+    if (showScanResults) {
+        AlertDialog(
+            onDismissRequest = { showScanResults = false },
+            title = { Text("发现 ${scanned.size} 个网关") },
+            text = {
+                Column {
+                    scanned.forEach { gateway ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = selectedGateways[gateway.port] ?: true,
+                                onCheckedChange = { selectedGateways[gateway.port] = it },
+                            )
+                            Text(gateway.display, fontSize = 13.sp, color = AppStyle.BodyText)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val chosen = scanned.filter { selectedGateways[it.port] ?: true }
+                    vms.addScannedGateways(chosen)
+                    showScanResults = false
+                }) { Text("加入") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showScanResults = false }) { Text("取消") }
+            },
+        )
+    }
+
     // 手动添加 / 编辑凭据
     editing?.let { edit ->
         AccountEditDialog(
             edit = edit,
             onDismiss = { editing = null },
             onSave = { label, credential, baseUrl ->
+                val normalizedBaseUrl = if (edit.provider.id == "custom") {
+                    io.modelbridge.core.ScannedGatewayParser.normalizeBaseUrl(baseUrl)
+                } else {
+                    baseUrl
+                }
                 vms.saveAccount(
                     id = edit.account?.id,
                     providerId = edit.provider.id,
                     label = label,
                     credential = credential,
-                    baseUrl = baseUrl,
+                    baseUrl = normalizedBaseUrl,
                 )
                 editing = null
             },
@@ -179,6 +276,39 @@ fun AccountsScreen(vms: ViewModels) {
             vms = vms,
             onDismiss = { loomyLogin = false },
         )
+    }
+}
+
+@Composable
+private fun RelayRow(
+    relay: Account,
+    checked: String?,
+    onToggle: (Boolean) -> Unit,
+    onCheck: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(relay.label.ifBlank { relay.baseUrl }, fontSize = 14.sp, color = AppStyle.BodyText)
+            Text(
+                buildList {
+                    add(relay.baseUrl)
+                    add(AccountStatusFormat.enabledLabel(relay.enabled))
+                    checked?.let { add(it) }
+                }.joinToString(" · "),
+                fontSize = 11.sp,
+                color = AppStyle.SubtitleText,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+        Switch(checked = relay.enabled, onCheckedChange = onToggle)
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+        TextButton(onClick = onCheck) { Text("检测连通性", fontSize = 12.sp) }
+        TextButton(onClick = onDelete) { Text("删除", fontSize = 12.sp, color = AppStyle.Accent) }
     }
 }
 

@@ -14,6 +14,7 @@ import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.core.Router
 import io.modelbridge.core.http.JvmHttpClient
 import io.modelbridge.providers.BuiltInProviders
+import io.modelbridge.providers.builtin.CustomRelayProvider
 import io.modelbridge.providers.auth.AccountCredentialRefresher
 import io.modelbridge.providers.auth.DeviceAuthClient
 import io.modelbridge.providers.auth.LoomySigningMaterial
@@ -91,6 +92,8 @@ class AppContainer(private val app: Application) {
     /** 供应商注册表，内置 14 家。 */
     val registry: ProviderRegistry = ProviderRegistry().apply {
         BuiltInProviders.registerInto(this)
+        // 隐藏 Provider：用于「自定义中转站」账号，不出现在内置供应商分组里。
+        register(CustomRelayProvider())
     }
 
     /** 设置，持久化在 SharedPreferences。 */

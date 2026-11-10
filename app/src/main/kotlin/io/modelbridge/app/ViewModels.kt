@@ -9,6 +9,8 @@ import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
 import io.modelbridge.core.ProviderRegistry
+import io.modelbridge.core.ScannedGateway
+import io.modelbridge.core.ScannedGatewayParser
 import io.modelbridge.providers.auth.DeviceAuthClient
 import io.modelbridge.providers.auth.DeviceAuthCredentials
 import io.modelbridge.providers.auth.DeviceAuthPollResult
@@ -99,6 +101,15 @@ class ViewModels(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = buildGroups(),
+        )
+
+    /** 独立的自定义中转站账号，不与 14 家内置供应商混在同一分组。 */
+    val customRelays: StateFlow<List<Account>> = container.accountStore.accountsFlow
+        .map { list -> list.filter { it.providerId == "custom" } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = container.accountStore.byProvider("custom"),
         )
 
     /** 访问日志。 */
@@ -230,6 +241,8 @@ class ViewModels(
 
     fun supportsAccountCredit(providerId: String): Boolean =
         container.accountServices.supports(providerId, AccountCapability.CreditRefresh)
+
+    fun customRelayProvider(): Provider? = registry.find("custom")
 
     fun providerDisplayName(providerId: String): String =
         registry.find(providerId)?.displayName ?: providerId
@@ -788,9 +801,9 @@ class ViewModels(
 
     // ---------- 端口扫描 ----------
 
-    /** 扫描发现的、疑似网关的端口。 */
-    private val _scannedPorts = MutableStateFlow<List<Int>>(emptyList())
-    val scannedPorts: StateFlow<List<Int>> = _scannedPorts.asStateFlow()
+    /** 扫描发现的、疑似网关的本机地址及模型数。 */
+    private val _scannedPorts = MutableStateFlow<List<ScannedGateway>>(emptyList())
+    val scannedPorts: StateFlow<List<ScannedGateway>> = _scannedPorts.asStateFlow()
 
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
@@ -805,7 +818,7 @@ class ViewModels(
         if (_scanning.value) return
         _scanning.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            val found = mutableListOf<Int>()
+            val found = mutableListOf<ScannedGateway>()
             // 常见端口优先，再扫两个常用区间，避免全量 65535 太慢
             val candidates = buildList {
                 addAll(listOf(8080, 8081, 8000, 3000, 5000, 11434))
@@ -814,20 +827,43 @@ class ViewModels(
             }.distinct()
 
             for (p in candidates) {
-                if (probePort(p)) found += p
+                probePort(p)?.let { found += it }
             }
             _scannedPorts.value = found
             _scanning.value = false
             _message.value = if (found.isEmpty()) {
                 "没有发现可用的本机网关"
             } else {
-                "发现 ${found.size} 个端口：${found.joinToString(", ") { "127.0.0.1:$it" }}"
+                "发现 ${found.size} 个网关"
             }
         }
     }
 
-    /** 探测单个端口是否是本项目的网关。 */
-    private suspend fun probePort(port: Int): Boolean = withContext(Dispatchers.IO) {
+    /** 将扫描结果中当前选中的网关保存为自定义中转站账号。 */
+    fun addScannedGateways(gateways: List<ScannedGateway>) {
+        if (gateways.isEmpty()) return
+        val existing = container.accountStore.all()
+            .filter { it.providerId == "custom" }
+            .map { it.baseUrl }
+            .toSet()
+        val relays = gateways.filterNot { it.baseUrl in existing }.map { gateway ->
+            Account(
+                id = "custom-${gateway.port}",
+                providerId = "custom",
+                label = gateway.label,
+                credential = Credential.None,
+                baseUrl = gateway.baseUrl,
+            )
+        }
+        if (relays.isNotEmpty()) {
+            container.accountStore.importAll(relays, replace = false)
+            refreshModels()
+        }
+        toast("已加入选中网关")
+    }
+
+    /** 探测单个端口是否返回 OpenAI 兼容模型列表。 */
+    private suspend fun probePort(port: Int): ScannedGateway? = withContext(Dispatchers.IO) {
         runCatching {
             val socket = java.net.Socket()
             socket.connect(java.net.InetSocketAddress("127.0.0.1", port), 220)
@@ -839,8 +875,9 @@ class ViewModels(
             socket.getOutputStream().flush()
             val text = socket.getInputStream().bufferedReader().readText()
             socket.close()
-            text.contains("\"object\"") && text.contains("list")
-        }.getOrDefault(false)
+            val body = ScannedGatewayParser.responseBody(text)
+            ScannedGatewayParser.scanned(port, body)
+        }.getOrNull()
     }
 
     // ---------- 内部 ----------
@@ -857,7 +894,9 @@ class ViewModels(
         registry.find(providerId)?.displayName ?: providerId
 
     private fun buildGroups(): List<ProviderGroup> =
-        registry.all().map { provider ->
+        registry.all()
+            .filterNot { it.id == "custom" }
+            .map { provider ->
             ProviderGroup(
                 provider = provider,
                 accounts = container.accountStore.byProvider(provider.id),

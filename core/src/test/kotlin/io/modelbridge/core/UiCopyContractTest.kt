@@ -93,8 +93,15 @@ class UiCopyContractTest {
         assertTrue(taskQuota.contains("\"展开\""))
         assertTrue(taskQuota.contains("个账号"))
         assertTrue(taskQuota.contains("groupBy { it.providerId }"))
-        assertTrue(accounts.contains("127.0.0.1:"))
+        val scannedGateway = File(root, "core/src/main/kotlin/io/modelbridge/core/ScannedGateway.kt").readText()
+        assertTrue(scannedGateway.contains("127.0.0.1:"))
+        assertTrue(scannedGateway.contains("个模型"))
         assertTrue(viewModels.contains("没有发现可用的本机网关"))
+        assertTrue(viewModels.contains("已加入选中网关"))
+        assertTrue(accounts.contains("发现 "))
+        assertTrue(accounts.contains(" 个网关"))
+        assertTrue(accounts.contains("自定义中转站"))
+        assertTrue(accounts.contains("还没有中转站"))
     }
 
     private fun findProjectRoot(): File {
