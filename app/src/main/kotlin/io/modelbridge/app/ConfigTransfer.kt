@@ -8,7 +8,7 @@ import io.modelbridge.core.AccountArchive
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * 配置的整包导出/导入，对应原版「我的 → 配置」里的
