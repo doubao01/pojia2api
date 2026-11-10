@@ -97,8 +97,42 @@ abstract class OpenAiCompatibleProvider : Provider {
                 contextLength = obj["context_length"]?.jsonPrimitive?.longOrNull
                     ?: obj["context_window"]?.jsonPrimitive?.longOrNull
                     ?: 0,
+                supportsTools = obj.booleanCapability(
+                    "supports_tools", "supports_function_calling",
+                    capabilitiesKeys = listOf("tools", "tool_calls", "function_calling"),
+                ),
+                supportsReasoning = obj.booleanCapability(
+                    "supports_reasoning", "supports_thinking",
+                    capabilitiesKeys = listOf("reasoning", "thinking"),
+                ),
+                extras = obj.reasoningLevels(),
             )
         }
+    }
+
+    /** 从常见 OpenAI 兼容模型字段或 capabilities 对象读取布尔能力。 */
+    private fun JsonObject.booleanCapability(
+        vararg topLevelKeys: String,
+        capabilitiesKeys: List<String>,
+    ): Boolean {
+        topLevelKeys.forEach { key ->
+            val value = this[key]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
+            if (value == true) return true
+        }
+        val capabilities = this["capabilities"] as? JsonObject ?: return false
+        return capabilitiesKeys.any { key ->
+            capabilities[key]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() == true
+        }
+    }
+
+    /** 推理级别原样保留为逗号分隔字符串，网关输出时再拆回 JSON 数组。 */
+    private fun JsonObject.reasoningLevels(): Map<String, String> {
+        val levels = (this["reasoning_levels"] as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+            ?.filter { it.isNotBlank() }
+            ?.takeIf { it.isNotEmpty() }
+            ?: return emptyMap()
+        return mapOf("reasoning_levels" to levels.joinToString(","))
     }
 
     override suspend fun listModels(context: ProviderContext): List<ModelInfo> {

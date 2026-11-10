@@ -18,6 +18,10 @@ class CustomRelayProviderTest {
         val models = provider.listModels(context(http, "http://127.0.0.1:8080/v1"))
         assertEquals(listOf("relay-a", "relay-b"), models.map { it.id })
         assertEquals("http://127.0.0.1:8080/v1/models", http.requests.single().url)
+        assertEquals(200_000L, models[1].contextLength)
+        assertEquals(true, models[1].supportsTools)
+        assertEquals(true, models[1].supportsReasoning)
+        assertEquals("low,high,max", models[1].extras["reasoning_levels"])
     }
 
     private fun context(http: HttpClient, baseUrl: String) = object : ProviderContext {
@@ -31,7 +35,10 @@ class CustomRelayProviderTest {
 
         override suspend fun execute(request: HttpRequest): HttpResponse {
             requests += request
-            val body = """{"data":[{"id":"relay-a"},{"id":"relay-b"}]}"""
+            val body = """{"data":[
+              {"id":"relay-a"},
+              {"id":"relay-b","context_window":200000,"capabilities":{"tools":true,"reasoning":true},"reasoning_levels":["low","high","max"]}
+            ]}"""
             return object : HttpResponse {
                 override val statusCode = 200
                 override val headers: Map<String, String> = emptyMap()
