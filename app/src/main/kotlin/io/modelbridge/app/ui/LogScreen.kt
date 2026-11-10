@@ -26,16 +26,15 @@ import java.util.Locale
 /**
  * 日志页：展示网关收到的请求。
  *
- * 条目数由 [io.modelbridge.app.GatewayRunner] 限制在 500 条，避免无限增长。
- * 外层已是可滚动容器，这里直接把最新 200 条铺成 Column，
- * 不再嵌 LazyColumn。
+ * 条目数由 [io.modelbridge.app.GatewayRunner] 按设置的日志上限保留，
+ * 界面按 3.10.0 `MainActivity.n()` 渲染最近 30 条，避免无限增长。
  */
 @Composable
 fun LogScreen(vms: ViewModels) {
     val entries = vms.log.collectAsState()
 
-    // 只渲染最近 200 条，既够用又不会让外层滚动卡顿
-    val visible = entries.value.takeLast(200).asReversed()
+    // 原版 MainActivity.n() 只把最近 30 条拼成 HTML 显示
+    val visible = entries.value.takeLast(30).asReversed()
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -82,6 +81,21 @@ fun LogScreen(vms: ViewModels) {
     }
 }
 
+/** 3.10.0 `C/M.java` 日志级别：INFO/WARN/ERROR 分别显示 I/W/E。 */
+private enum class LogLevel(val label: String) {
+    Info("I"),
+    Warn("W"),
+    Error("E");
+
+    companion object {
+        fun label(status: Int): String = when {
+            status in 200..299 -> Info.label
+            status in 300..399 || status == 0 -> Warn.label
+            else -> Error.label
+        }
+    }
+}
+
 @Composable
 private fun LogCard(entry: LogEntry) {
     val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(entry.time))
@@ -120,6 +134,7 @@ private fun LogCard(entry: LogEntry) {
                 )
             }
             val details = buildList {
+                add(LogLevel.label(entry.status))
                 if (entry.costMillis > 0) add("${entry.costMillis} ms")
                 entry.upstreamId?.takeIf { it.isNotBlank() }?.let { add("上游：$it") }
                 entry.message?.takeIf { it.isNotBlank() }?.let { add(it) }
