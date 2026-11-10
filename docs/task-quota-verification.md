@@ -32,7 +32,7 @@
 
 - `AccountServicesTest` 8 项、`LoomyAccountServiceTest` 4 项、`BearerCreditServicesTest` 4 项、`TabbitAccountServiceTest` 4 项、`MeooAccountServiceTest` 3 项、`TraeAccountServiceTest` 4 项、`AStudioAccountServiceTest` 2 项：覆盖已接入供应商的请求头、路径、响应解析、签到与任务状态、失败隔离。
 - 未实现边界：AgentMore 的 `X-Sign` 依赖原 APK 固定盐值，不从反编译源码复制，因此未生成不可信签名请求；Dangbei 原版 `c(account)` 直接返回 `null`，保持明确不支持。
-- `./gradlew :core:test :providers:test --offline`：core 85、providers 88，失败 0。
+- `./gradlew :core:test :providers:test --offline`：core 88、providers 88，失败 0。
 - `AccountDailyCheckinTest` 2 项：按 Asia/Shanghai 自然日和账号 ID 生成签到键，验证同日幂等、跨日清除、账号隔离。
 - `AccountHealthScheduleTest` 3 项：按 provider+account 与 Asia/Shanghai 自然日缓存账号可用性，同日复用、跨日重检、结果更新和过期裁剪。
 - `AccountCenterModeContractTest`：静态验证首页两个入口分别对应任务管理/账号管理、两个模式渲染到不同子页、页面副标题按 3.10.0 对齐，以及账号管理页触发每日检测。

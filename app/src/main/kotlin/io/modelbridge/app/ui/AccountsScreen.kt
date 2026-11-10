@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.modelbridge.app.ViewModels
 import io.modelbridge.core.Account
+import io.modelbridge.core.AccountStatusFormat
 import io.modelbridge.spi.AuthKind
 import io.modelbridge.spi.Credential
 import io.modelbridge.spi.Provider
@@ -323,6 +324,13 @@ private fun AccountRow(
                 Text(
                     text = buildString {
                         append(credentialLabel(account.credential))
+                        val region = AccountStatusFormat.regionLabel(account.authRegion, account.authDomain)
+                        if (region.isNotBlank()) append(" · $region")
+                        append(" · ").append(AccountStatusFormat.enabledLabel(account.enabled))
+                        AccountStatusFormat.expiryLabel(
+                            account.authExpiresAtMillis,
+                            System.currentTimeMillis(),
+                        ).takeIf { it.isNotBlank() }?.let { append(" · $it") }
                         if (account.baseUrl.isNotBlank()) append(" · ${account.baseUrl}")
                         checkResult?.let { append(" · $it") }
                     },

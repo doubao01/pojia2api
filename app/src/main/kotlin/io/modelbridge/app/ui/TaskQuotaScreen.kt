@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.modelbridge.app.ViewModels
 import io.modelbridge.core.Account
+import io.modelbridge.core.AccountStatusFormat
 import io.modelbridge.providers.account.QuotaKind
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -195,6 +196,13 @@ private fun AccountCenter(
                     Text(
                         text = buildList {
                             add(account.providerId)
+                            val region = AccountStatusFormat.regionLabel(account.authRegion, account.authDomain)
+                            if (region.isNotBlank()) add(region)
+                            add(AccountStatusFormat.enabledLabel(account.enabled))
+                            AccountStatusFormat.expiryLabel(
+                                account.authExpiresAtMillis,
+                                System.currentTimeMillis(),
+                            ).takeIf { it.isNotBlank() }?.let { add(it) }
                             if (canCredit) {
                                 add(
                                     when {

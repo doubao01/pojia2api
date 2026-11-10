@@ -73,6 +73,13 @@ class UiCopyContractTest {
         assertTrue(gatewayService.contains("网关启动失败，保持服务存活以便重试"))
         assertTrue(gatewayService.contains("setContentTitle(\"网关管家\")"))
         assertTrue(floating.contains("setContentTitle(\"网关管家\")"))
+        val statusFormat = File(root, "core/src/main/kotlin/io/modelbridge/core/AccountStatusFormat.kt").readText()
+        assertTrue(statusFormat.contains("启用中"))
+        assertTrue(statusFormat.contains("国内版"))
+        assertTrue(statusFormat.contains("国际版"))
+        assertTrue(statusFormat.contains("天后到期，自动续期…"))
+        assertTrue(File(root, "app/src/main/kotlin/io/modelbridge/app/ui/AccountsScreen.kt").readText()
+            .contains("AccountStatusFormat.expiryLabel"))
     }
 
     private fun findProjectRoot(): File {
