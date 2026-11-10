@@ -1,7 +1,10 @@
 package io.modelbridge.app
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.core.content.ContextCompat
 import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.AccountsScreen
 import io.modelbridge.app.ui.AppStyle
@@ -73,6 +77,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Android 13+ 前台服务通知权限；拒绝时给出明确提示，不静默失败。 */
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (!granted) {
+            vms.toast("通知权限被拒绝，前台服务通知可能不显示")
+        }
+    }
+
     /** 导入：读到文件后解析并交给回调。 */
     private val importLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -88,6 +101,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestNotificationPermissionIfNeeded()
 
         // 把系统文件选择器的启动方式接到 Activity 的 result API 上。
         // ConfigTransfer 里 startActivity 只是为了唤起选择器，真正的
@@ -99,6 +113,17 @@ class MainActivity : ComponentActivity() {
             BridgeTheme {
                 MainScreen(vms)
             }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 

@@ -49,7 +49,8 @@ fun WebLoginDialog(
 
     val loginUrl = provider.loginUrl
 
-    // CookieManager 必须先允许第三方 Cookie，否则部分站点的会话拿不到
+    // CookieManager 必须先允许 Cookie，并对当前 WebView 放开第三方 Cookie，
+    // 否则部分站点的会话 Cookie 拿不到。
     remember {
         CookieManager.getInstance().setAcceptCookie(true)
         true
@@ -80,6 +81,8 @@ fun WebLoginDialog(
                             modifier = Modifier.fillMaxWidth().height(380.dp),
                             factory = { ctx ->
                                 WebView(ctx).apply {
+                                    CookieManager.getInstance()
+                                        .setAcceptThirdPartyCookies(this, true)
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
                                     settings.userAgentString = settings.userAgentString
@@ -131,6 +134,8 @@ fun WebLoginDialog(
             TextButton(
                 enabled = loginUrl != null,
                 onClick = {
+                    // WebView 的 Cookie 可能仍在内存队列里；按 AndroidWebView 约定先落盘。
+                    CookieManager.getInstance().flush()
                     val raw = readCookiesFor(provider, currentUrl)
                     if (raw.isNullOrBlank()) {
                         error = "还没读到 Cookie，请确认已登录成功再试"
@@ -162,7 +167,13 @@ private fun readCookiesFor(provider: Provider, currentUrl: String): String? {
     }.distinct()
 
     val cookieHeader = candidates.asSequence()
-        .mapNotNull { host -> manager.getCookie(host) }
+        .flatMap { host ->
+            sequenceOf(
+                runCatching { manager.getCookie(host) }.getOrNull(),
+                runCatching { manager.getCookie("https://$host") }.getOrNull(),
+            )
+        }
+        .filterNotNull()
         .firstOrNull { it.isNotBlank() }
 
     return cookieHeader

@@ -16,13 +16,14 @@
 | 端口、监听、访问密钥 | `GatewaySettings`、`GatewayRunner`、`GatewayConfig`；局域网开关绑定回环地址；访问密钥启用网关鉴权 | core 测试 / CI APK |
 | 调度：重试、超时、冷却、失败阈值 | `GatewayConfig` 接入整轮重试与 `withTimeout`；`HealthTracker` 负责失败阈值与冷却 | `GatewayRetryTest`、core 测试 |
 | 日志上限、重置统计、清空日志 | `GatewayRunner` 可配置内存日志上限、清空与统计重置 | core 测试 / CI APK |
-| 开机自启 | `BootReceiver` 与 manifest 广播 | CI APK；真机开机广播未验证 |
+| 开机自启 | `BootReceiver` 与 manifest 广播；设置项开启后通过 `startForegroundService` 拉起网关 | CI APK；真机开机广播未验证 |
+| 前台服务通知 | `GatewayService` 通知渠道与停止动作；Android 13+ 进入界面时请求 `POST_NOTIFICATIONS`，拒绝时明确提示 | CI APK；真机通知权限与后台保活未验证 |
 | 悬浮球 | `FloatingBallService` 显示共享网关运行状态、支持权限引导、尺寸更新、拖动边界 | CI APK；真机权限与悬浮窗未验证 |
 | 导出/导入配置 | `ConfigTransfer` 处理设置、账号、策略；整包配置与账号文件解析分离 | core 测试 / CI APK |
 | 账号持久化与凭据序列化 | `AccountPreferences` 保存成功后发布；`Credential` 密封类序列化；`authExpiresAtMillis` 记录 Loomy/OAuth 到期时间，过期账号不参与模型目录和路由 | `AccountPersistenceTest`、`CredentialExpiryTest` |
 | 到期前刷新设备授权凭据 | `AccountCredentialRefresher` 将已保存账号映射回 Qoder/WorkBuddy 刷新协议，提前 5 分钟续期；轮换令牌、有效期和身份元数据原子写回；失败退避、并发编辑不覆盖；接进网关启动/周期维护、模型刷新与连通性检测，刷新后失效模型目录缓存 | `AccountCredentialRefresherTest`（8 项）、`CredentialRefreshCatalogTest`、CI APK；真实供应商刷新未验证 |
 | 策略库与策略注入 | `PolicyMatcher` / `PolicyInjector` / `PrefsPolicyStore` / `PolicyScreen`；固定绑定与自动匹配 | `PolicyTest`、`PolicyGatewayTest`、CI APK |
-| WebView Cookie 登录 | `WebLoginDialog` 读取 Cookie 并保存为 `Credential.Cookies` | CI APK；真实站点登录未验证 |
+| WebView Cookie 登录 | `WebLoginDialog` 启用 JavaScript/DOM Storage，显式放开第三方 Cookie，登录完成后 `flush()` 并按主机与 https 域名读取 Cookie，保存为 `Credential.Cookies` | CI APK；真实站点登录未验证 |
 | Qoder/CodeBuddy 设备授权 | `DeviceLoginDialog` + `QoderDeviceAuth` / `WorkBuddyDeviceAuth` 轮询、取消、OAuth 元数据保存 | 41 个设备授权契约测试、CI APK；真实授权未验证 |
 | Loomy 手机验证码 | `LoomySmsAuth` 两步 sendCode/checkCode 与 `LoomySmsDialog`；签名材料显式注入；登录成功保存 14 天会话有效期 | 5 个协议测试、`CredentialExpiryTest`、CI APK；生产签名材料未注入 |
 | 手动添加、导入/导出账号 | `AccountEditDialog` 与 `AccountArchive`；兼容原版数组、WorkBuddy 单对象、secret 对象/字符串 | `AccountArchiveTest`、CI APK；用户已确认修正版导入文件不再报错 |
