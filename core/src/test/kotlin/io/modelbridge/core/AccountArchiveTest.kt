@@ -118,6 +118,26 @@ class AccountArchiveTest {
     }
 
     @Test
+    fun `custom relay survives account export and import`() {
+        val relay = Account(
+            id = "custom-8080",
+            providerId = "custom",
+            label = "本机 :8080",
+            credential = Credential.None,
+            baseUrl = "http://127.0.0.1:8080/v1",
+        )
+
+        val raw = AccountArchive.export(listOf(relay))
+        val parsed = AccountArchive.parseAccounts(raw).single()
+
+        assertEquals("custom", parsed.providerId)
+        assertEquals("custom-8080", parsed.id)
+        assertEquals("http://127.0.0.1:8080/v1", parsed.baseUrl)
+        assertEquals(Credential.None, parsed.credential)
+        assertTrue(parsed.enabled)
+    }
+
+    @Test
     fun `malformed or empty archive is rejected`() {
         val empty = runCatching { AccountArchive.parseAccounts("[]") }.exceptionOrNull()
         val malformed = runCatching { AccountArchive.parseAccounts("not-json") }.exceptionOrNull()
