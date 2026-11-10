@@ -92,7 +92,7 @@ class GatewayService : Service() {
     }
 }
 
-const val DEFAULT_PORT = 8080
+const val DEFAULT_PORT = 7878
 const val ACTION_START = "io.modelbridge.action.START"
 const val ACTION_STOP = "io.modelbridge.action.STOP"
 const val INTENT_PORT = "io.modelbridge.port"

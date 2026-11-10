@@ -245,7 +245,7 @@ class GatewayRunner(
     }
 
     private fun append(entry: LogEntry) {
-        val limit = settings.current().logLimit.coerceIn(50, 20_000)
+        val limit = settings.current().logLimit.coerceIn(50, 5_000)
         val current = _log.value
         // 把本次请求拿到的用量附到这条日志上，取完即清，避免串到下一条
         val usage = lastUsage

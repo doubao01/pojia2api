@@ -16,23 +16,23 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class GatewaySettings(
     // ---------- 监听 ----------
-    /** 监听端口。 */
-    val port: Int = 8080,
+    /** 监听端口。3.10.0 默认 7878，合法范围 1024–65535。 */
+    val port: Int = 7878,
     /** 允许局域网访问。true 时监听 0.0.0.0，false 只监听回环。 */
-    val allowLan: Boolean = true,
+    val allowLan: Boolean = false,
     /** 访问密钥，空表示不校验。 */
     val accessKey: String = "",
 
     // ---------- 调度 ----------
-    /** 单次请求的最大重试次数。 */
+    /** 单次请求的最大重试次数，3.10.0 范围 0–10。 */
     val maxRetries: Int = 2,
-    /** 连续失败多少次后进入冷却。 */
-    val failureThreshold: Int = 3,
-    /** 冷却时长（秒）。 */
-    val cooldownSeconds: Int = 30,
-    /** 请求超时（秒）。 */
-    val requestTimeoutSeconds: Int = 120,
-    /** 日志上限（条）。 */
+    /** 连续失败多少次后进入冷却，3.10.0 范围 1–100。 */
+    val failureThreshold: Int = 2,
+    /** 冷却时长（秒），3.10.0 范围 1–3600。 */
+    val cooldownSeconds: Int = 60,
+    /** 请求超时（秒），3.10.0 范围 10–1800。 */
+    val requestTimeoutSeconds: Int = 180,
+    /** 日志上限（条），3.10.0 范围 50–5000。 */
     val logLimit: Int = 500,
 
     // ---------- 启动 ----------
@@ -40,8 +40,8 @@ data class GatewaySettings(
     val autoStart: Boolean = false,
     /** 显示悬浮球。 */
     val showFloatingBall: Boolean = false,
-    /** 悬浮球大小（dp，1–96）。 */
-    val floatingBallSizeDp: Int = 48,
+    /** 悬浮球大小（dp，3.10.0 默认 52，范围 1–96）。 */
+    val floatingBallSizeDp: Int = 52,
 
     // ---------- 进阶 ----------
     /** 去掉客户端指纹（转发时不带上游不需要的识别头）。 */
@@ -56,11 +56,11 @@ data class GatewaySettings(
      */
     fun sanitized(): GatewaySettings = copy(
         port = if (port == 0) 0 else port.coerceIn(1024, 65535),
-        maxRetries = maxRetries.coerceIn(0, 5),
-        failureThreshold = failureThreshold.coerceIn(1, 20),
-        cooldownSeconds = cooldownSeconds.coerceIn(5, 600),
-        requestTimeoutSeconds = requestTimeoutSeconds.coerceIn(5, 600),
-        logLimit = logLimit.coerceIn(50, 20_000),
+        maxRetries = maxRetries.coerceIn(0, 10),
+        failureThreshold = failureThreshold.coerceIn(1, 100),
+        cooldownSeconds = cooldownSeconds.coerceIn(1, 3600),
+        requestTimeoutSeconds = requestTimeoutSeconds.coerceIn(10, 1800),
+        logLimit = logLimit.coerceIn(50, 5_000),
         floatingBallSizeDp = floatingBallSizeDp.coerceIn(1, 96),
     )
 }

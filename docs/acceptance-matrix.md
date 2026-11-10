@@ -5,7 +5,7 @@
 ## 最近验证
 
 - 本地 JVM 回归：core 116、providers 90，失败 0。
-- GitHub Actions：run #35—#52、#57—#105 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
+- GitHub Actions：run #35—#52、#57—#106 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
 - 主分支最新提交以 `git log -1` 为准；每次推送后由 CI 验证对应 HEAD。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
@@ -13,12 +13,12 @@
 
 | 目标项 | 当前实现 | 验证证据 |
 |---|---|---|
-| 端口、监听、访问密钥 | `GatewaySettings`、`GatewayRunner`、`GatewayConfig`；局域网开关绑定回环地址；访问密钥启用网关鉴权 | core 测试 / CI APK |
-| 调度：重试、超时、冷却、失败阈值 | `GatewayConfig` 接入整轮重试与 `withTimeout`；`HealthTracker` 负责失败阈值与冷却 | `GatewayRetryTest`、core 测试 |
+| 端口、监听、访问密钥 | `GatewaySettings`、`GatewayRunner`、`GatewayConfig`；局域网开关绑定回环地址；访问密钥启用网关鉴权；按 3.10.0 源码默认端口 7878、默认仅本机监听；端口范围 1024–65535 | core 测试 / CI APK |
+| 调度：重试、超时、冷却、失败阈值 | `GatewayConfig` 接入整轮重试与 `withTimeout`；`HealthTracker` 负责失败阈值与冷却；3.10.0 源码范围 0–10 / 1–100 / 1–3600s / 10–1800s 与 `sanitized()` 收敛范围一致 | `GatewayRetryTest`、`UiCopyContractTest`、core 测试 |
 | 日志上限、重置统计、清空日志 | `GatewayRunner` 可配置内存日志上限；`GatewayCounters` 独立累计请求/成功/失败/耗时/token/缓存命中与 `byUpstream` 分上游计数，快照按原版 `SharedPreferences("stats")` 持久化；清空日志保留累计统计，重置统计同时清空日志、计数与磁盘快照；访问日志的 `path` 不含查询串，诊断/异常/启动失败文字经 `LogRedactor` 脱敏并截断 | `GatewayCountersTest`（4 项）、`LogRedactorTest`（6 项）、`UiCopyContractTest`、CI APK |
 | 开机自启 | `BootReceiver` 与 manifest 广播；设置项开启后通过 `startForegroundService` 拉起网关；前台服务通知标题/启动状态按 3.10.0 对齐，启动失败保留服务以便重试 | `UiCopyContractTest`、CI APK；真机开机广播与失败恢复未验证 |
 | 前台服务通知 | `GatewayService` 通知渠道与停止动作；Android 13+ 进入界面时请求 `POST_NOTIFICATIONS`，拒绝时明确提示 | CI APK；真机通知权限与后台保活未验证 |
-| 悬浮球 | `FloatingBallService` 显示共享网关运行状态、支持权限引导、尺寸更新、拖动边界与 3.10.0 通知标题 | CI APK；真机权限与悬浮窗未验证 |
+| 悬浮球 | `FloatingBallService` 显示共享网关运行状态、支持权限引导、尺寸更新、拖动边界与 3.10.0 通知标题；默认 52dp，界面与存储范围 1–96dp | CI APK；真机权限与悬浮窗未验证 |
 | 导出/导入配置 | `ConfigTransfer` 处理设置、账号、策略；整包配置与账号文件解析分离；导入/旧存档的数值统一经 `GatewaySettings.sanitized()` 收敛到界面允许范围，自定义中转站地址随账号一起恢复 | `UiCopyContractTest`、账号存档测试、CI APK；真机文件选择器未验证 |
 | 账号持久化与凭据序列化 | `AccountPreferences` 保存成功后发布；`Credential` 密封类序列化；`authExpiresAtMillis` 记录 Loomy/OAuth 到期时间，过期账号不参与模型目录和路由 | `AccountPersistenceTest`、`CredentialExpiryTest` |
 | 到期前刷新设备授权凭据 | `AccountCredentialRefresher` 将已保存账号映射回 Qoder/WorkBuddy 刷新协议，提前 5 分钟续期；轮换令牌、有效期和身份元数据原子写回；失败退避、并发编辑不覆盖；接进网关启动/周期维护、模型刷新与连通性检测，刷新后失效模型目录缓存 | `AccountCredentialRefresherTest`（8 项）、`CredentialRefreshCatalogTest`、CI APK；真实供应商刷新未验证 |
@@ -35,7 +35,7 @@
 | 任务/额度入口与页面 | 首页「任务管理」与「账号管理」分别进入独立页面模式；任务管理显示一键签到、一键任务、任务列表、额度汇总，任务空态按 3.9.3 显示「没有可用任务」「当前供应商均不支持签到或任务」，批量执行态显示「正在执行…」；账号管理逐账号显示可用积分、额度详情、今日签到状态和单账号动作；`AccountServiceRegistry` 已按静态契约接入多家供应商，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | `AccountCenterModeContractTest`、账号业务测试（29 项）、3.9.3 反编译契约、CI APK；真实供应商接口与像素布局未验证 |
 | 账号业务与逐账号积分/签到 | `providerGroups` 与独立账号管理页均按 CREDIT_REFRESH/CHECKIN 显示真实可用积分、额度详情、今日已签到/未签到，提供单账号「刷新积分」「签到」；账号行显示国内/国际版、启用中、N 天后到期自动续期；本地签到状态按 Asia/Shanghai 自然日持久化；账号管理页按自然日自动检测一次账号可用性并显示连通结果 | `AccountDailyCheckinTest`（2 项）、`AccountHealthScheduleTest`（3 项）、`AccountStatusFormatTest`（3 项）、`AccountCenterModeContractTest`、账号业务测试、CI APK；真实服务端签到未验证 |
 | 日志页清空按钮 | `LogScreen` 提供清空按钮、空态「暂无日志」，副标题按原版显示「最近 N 条」；每条日志显示耗时、实际命中的上游、策略/指纹诊断与 token 用量；`GatewayRunner.clearLog` 清空内存日志、保留累计统计 | `UiCopyContractTest`、CI APK |
-| 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 dex 与 3.9.3 `z/g.java` 规则清理计费头、Claude/Codex/ZCode/DS Harness 身份句、模板句和空模板参数；身份句按原版替换为中性表述而不误删；网关记录规则级诊断，解析失败回退原文；模型和工具参数保留 | `ClientFingerprintStripperTest`（9 项）、CI APK；请求头指纹规则因静态规则表被 JADX 截断尚未完整复刻 |
+| 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 dex 与 3.9.3 `z/g.java` 规则清理计费头、Claude/Codex/ZCode/DS Harness 身份句、模板句和空模板参数；设置页补齐原版风险说明、开启/关闭 Toast；身份句按原版替换为中性表述而不误删；网关记录规则级诊断，解析失败回退原文；模型和工具参数保留 | `ClientFingerprintStripperTest`（9 项）、`UiCopyContractTest`、CI APK；请求头指纹规则因静态规则表被 JADX 截断尚未完整复刻 |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |
 | 多协议 HTTP 入口 | `/chat/completions`、`/responses`、`/messages` 与对应 `/v1` 路径；策略注入按协议写入 system / instructions / system；responses/messages 的 reasoning_effort、context_window、parallel_tool_calls、top_k、thinking、metadata、tool_choice 等扩展字段按原始 JSON 类型透传；按 3.10.0 dex 补齐 messages/content/role、tools/function、tool_calls 链和扩展参数取值校验 | `WireProtocolGatewayTest`、`WireProtocolAdapterTest`（7 项）、`ExtrasForwardingTest`、CI APK |
 | 设置页与关于页文案 | 按 3.10.0 dex 字符串对齐设置项、首页接入说明、免责声明、本机转发说明与作者署名语义；接入地址随运行状态动态填入本机 URL，策略库导入帮助与「上游」页模型 ID 文案逐字补齐；配置导出完成、扫描/检测状态、任务/额度失败提示补齐原版文案 | `UiCopyContractTest`、`3.10.0-ui-audit.md`、CI APK |

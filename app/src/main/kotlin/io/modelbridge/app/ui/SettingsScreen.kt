@@ -69,16 +69,16 @@ fun SettingsScreen(vms: ViewModels) {
             NumberRow(
                 label = "最大重试次数",
                 value = settings.maxRetries,
-                hint = "最大重试次数，0–5",
-                range = 0..5,
+                hint = "最大重试次数，0–10",
+                range = 0..10,
                 onValueChange = { vms.updateSettings { s -> s.copy(maxRetries = it) } },
             )
             RowDivider()
             NumberRow(
                 label = "失败阈值",
                 value = settings.failureThreshold,
-                hint = "连续失败多少次进入冷却（1–20）",
-                range = 1..20,
+                hint = "连续失败多少次进入冷却（1–100）",
+                range = 1..100,
                 onValueChange = { vms.updateSettings { s -> s.copy(failureThreshold = it) } },
             )
             RowDivider()
@@ -86,8 +86,8 @@ fun SettingsScreen(vms: ViewModels) {
                 label = "冷却时长（秒）",
                 value = settings.cooldownSeconds,
                 suffix = " 秒",
-                hint = "冷却时长（秒），5–600",
-                range = 5..600,
+                hint = "冷却时长（秒），1–3600",
+                range = 1..3600,
                 onValueChange = { vms.updateSettings { s -> s.copy(cooldownSeconds = it) } },
             )
             RowDivider()
@@ -95,8 +95,8 @@ fun SettingsScreen(vms: ViewModels) {
                 label = "请求超时（秒）",
                 value = settings.requestTimeoutSeconds,
                 suffix = " 秒",
-                hint = "请求超时（秒），5–600",
-                range = 5..600,
+                hint = "请求超时（秒），10–1800",
+                range = 10..1800,
                 onValueChange = { vms.updateSettings { s -> s.copy(requestTimeoutSeconds = it) } },
             )
             RowDivider()
@@ -104,8 +104,8 @@ fun SettingsScreen(vms: ViewModels) {
                 label = "日志上限",
                 value = settings.logLimit,
                 suffix = " 条",
-                hint = "日志最多保留条数（50–20000）",
-                range = 50..20000,
+                hint = "日志最多保留条数（50–5000）",
+                range = 50..5000,
                 onValueChange = { vms.updateSettings { s -> s.copy(logLimit = it) } },
             )
         }
@@ -130,7 +130,7 @@ fun SettingsScreen(vms: ViewModels) {
                     label = "悬浮球大小",
                     value = settings.floatingBallSizeDp,
                     suffix = " dp",
-                    hint = "范围 1–96",
+                    hint = "范围 1–96 dp",
                     range = 1..96,
                     onValueChange = { vms.updateSettings { s -> s.copy(floatingBallSizeDp = it) } },
                 )
@@ -140,11 +140,23 @@ fun SettingsScreen(vms: ViewModels) {
         // ---------------- 身份与指纹（进阶） ----------------
         GroupTitle("身份与指纹（进阶）")
         SettingsGroup {
+            Text(
+                "影响上游怎么识别这批请求。默认关闭，打开后才开始清理；被风控盯上时再开。",
+                fontSize = 12.5.sp,
+                color = AppStyle.SubtitleText,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
             SwitchRow(
                 label = "去掉客户端指纹",
                 checked = settings.stripClientFingerprint,
                 hint = "去掉客户端指纹",
-                onCheckedChange = { vms.updateSettings { s -> s.copy(stripClientFingerprint = it) } },
+                onCheckedChange = { enabled ->
+                    vms.updateSettings { s -> s.copy(stripClientFingerprint = enabled) }
+                    vms.toast(
+                        if (enabled) "已开启：请求将去掉客户端身份痕迹"
+                        else "已关闭：请求原样透传",
+                    )
+                },
             )
         }
 
