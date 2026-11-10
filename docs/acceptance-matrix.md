@@ -27,7 +27,7 @@
 | Qoder/CodeBuddy 设备授权 | `DeviceLoginDialog` + `QoderDeviceAuth` / `WorkBuddyDeviceAuth` 轮询、取消、OAuth 元数据保存 | 41 个设备授权契约测试、CI APK；真实授权未验证 |
 | Loomy 手机验证码 | `LoomySmsAuth` 两步 sendCode/checkCode 与 `LoomySmsDialog`；签名材料显式注入；登录成功保存 14 天会话有效期 | 5 个协议测试、`CredentialExpiryTest`、CI APK；生产签名材料未注入 |
 | 手动添加、导入/导出账号 | `AccountEditDialog` 与 `AccountArchive`；兼容原版数组、WorkBuddy 单对象、secret 对象/字符串；昵称字段提示 `@上游昵称` 模型名后缀，删除账号确认按 3.10.0 提示本地凭证一并清除 | `AccountArchiveTest`、`UiCopyContractTest`、CI APK；用户已确认修正版导入文件不再报错 |
-| 连通性检测、端口扫描 | `ViewModels.checkAccount` 与本机端口扫描；扫描 `/v1/models` 解析模型数，空结果显示「没有发现可用的本机网关」，命中结果以 `127.0.0.1:端口（N 个模型）` 展示并支持多选加入自定义中转站 | `ScannedGatewayTest`（4 项）、`UiCopyContractTest`、CI APK；真机扫描未验证 |
+| 连通性检测、端口扫描 | `ViewModels.checkAccount`、按日自动检测与中转站批量检测；批量检测按 3.9.3 显示「正在检测 N 个上游…」/「连通 X / N」/「没有启用的上游」；扫描 `/v1/models` 解析模型数，空结果显示「没有发现可用的本机网关」，命中结果以 `127.0.0.1:端口（N 个模型）` 展示并支持多选加入自定义中转站 | `ScannedGatewayTest`（4 项）、`UiCopyContractTest`、CI APK；真机扫描未验证 |
 | 自定义中转站 | 隐藏 `CustomRelayProvider` 让 `custom` 账号按各自 `baseUrl` 参与模型目录与路由；供应商页独立显示中转站列表、空态、手动添加、检测连通性、启停和删除；扫描结果按端口去重保存；账号存档导出/导入保留 `Credential.None` 与 `baseUrl` | `ScannedGatewayTest`（4 项）、`AccountArchiveTest`、`CustomRelayRoutingTest`、`CustomRelayProviderTest`、`UiCopyContractTest`、CI APK；真实中转站调用未验证 |
 | 首页统计、缓存命中率、token | `HomeScreen` 按 3.9.3 两列 key/value 展示累计请求/成功率、输入/输出 token、缓存命中率/平均耗时；数值来自 `GatewayCounters` 独立累计统计，日志达到上限后不再丢失；成功/失败/可用模型放状态卡副标题；复制地址与「已复制」反馈保留 | `GatewayCountersTest`、`UiCopyContractTest`、CI APK；真机像素核对未验证 |
 | 首页复制地址、管理入口 | 复制仅本机地址；局域网开启时从网卡枚举真实 site-local IPv4 并生成 `http://IP:端口/v1`，关闭/无地址时明确显示「仅本机可访问」/「未检测到局域网地址」且不可复制；账号、策略、任务/额度入口 | `LanAddressesTest`（3 项）、`UiCopyContractTest`、CI APK |

@@ -164,9 +164,9 @@ fun AccountsScreen(vms: ViewModels) {
                 TextButton(onClick = {
                     vms.customRelayProvider()?.let { editing = AccountEdit(provider = it) }
                 }) { Text("手动添加", fontSize = 12.sp) }
-                TextButton(onClick = {
-                    customRelays.forEach { vms.checkAccount(it) }
-                }) { Text("检测连通性", fontSize = 12.sp) }
+                TextButton(onClick = { vms.checkAllCustomRelays() }) {
+                    Text("检测连通性", fontSize = 12.sp)
+                }
             }
         }
 

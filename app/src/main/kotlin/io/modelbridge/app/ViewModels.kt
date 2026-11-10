@@ -773,6 +773,32 @@ class ViewModels(
         }
     }
 
+    /** 原版「正在检测 N 个上游…」/「连通 X / N」批量检测提示。 */
+    fun checkAllCustomRelays() {
+        val relays = container.accountStore.byProvider("custom").filter { it.enabled }
+        if (relays.isEmpty()) {
+            toast("没有启用的上游")
+            return
+        }
+        toast("正在检测 ${relays.size} 个上游…")
+        _checks.value = _checks.value + relays.associate { it.id to "检测中…" }
+        viewModelScope.launch(Dispatchers.IO) {
+            var reachable = 0
+            relays.forEach { account ->
+                val result = validateAccount(account)
+                if (result == "可用") reachable++
+                healthSchedule.record(
+                    account.providerId,
+                    account.id,
+                    reachable = result == "可用",
+                    message = result,
+                )
+                _checks.value = _checks.value + (account.id to result)
+            }
+            toast("连通 $reachable / ${relays.size}")
+        }
+    }
+
     private suspend fun validateAccount(account: Account): String {
         container.credentialRefresher.refreshAccount(account.id, ignoreBackoff = true)
         val current = container.accountStore.find(account.id) ?: account
