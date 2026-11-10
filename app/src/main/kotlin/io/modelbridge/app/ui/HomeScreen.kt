@@ -63,7 +63,6 @@ fun HomeScreen(
         .let { list -> if (list.isEmpty()) 0L else list.sumOf { it.costMillis } / list.size }
     val hitRate = vms.runner.cacheHitRate()
     val (tokenIn, tokenOut) = vms.runner.tokenTotals()
-    val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -71,38 +70,33 @@ fun HomeScreen(
         StatusCard(
             running = running,
             port = port,
+            models = models.size,
+            success = ok,
+            failed = fail,
             onToggle = { if (running) vms.stopGateway() else vms.startGateway() },
         )
 
-        // 概览统计
+        // 概览统计：原版 3.9.3 `MainActivity.k()` 是每行两个 key/value。
         SectionTitle("概览")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AppStyle.CardSpacing),
-        ) {
-            StatCard("累计请求", total.toString(), Modifier.weight(1f))
-            StatCard("成功", ok.toString(), Modifier.weight(1f))
-            StatCard("失败", fail.toString(), Modifier.weight(1f))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = AppStyle.CardSpacing),
-            horizontalArrangement = Arrangement.spacedBy(AppStyle.CardSpacing),
-        ) {
-            StatCard("成功率", "%.1f%%".format(successRate), Modifier.weight(1f))
-            StatCard("平均耗时", if (avgCost > 0) "${avgCost} ms" else "—", Modifier.weight(1f))
-            StatCard("可用模型", models.size.toString(), Modifier.weight(1f))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = AppStyle.CardSpacing),
-            horizontalArrangement = Arrangement.spacedBy(AppStyle.CardSpacing),
-        ) {
-            StatCard(
-                "缓存命中率",
-                hitRate?.let { "%.1f%%".format(it) } ?: "—",
-                Modifier.weight(1f),
+        InfoCard {
+            StatPairRow(
+                leftLabel = "累计请求",
+                leftValue = total.toString(),
+                rightLabel = "成功率",
+                rightValue = "%.1f%%".format(successRate),
             )
-            StatCard("输入 token", tokenIn.toString(), Modifier.weight(1f))
-            StatCard("输出 token", tokenOut.toString(), Modifier.weight(1f))
+            StatPairRow(
+                leftLabel = "输入 token",
+                leftValue = tokenIn.toString(),
+                rightLabel = "输出 token",
+                rightValue = tokenOut.toString(),
+            )
+            StatPairRow(
+                leftLabel = "缓存命中率",
+                leftValue = hitRate?.let { "%.1f%%".format(it) } ?: "—",
+                rightLabel = "平均耗时",
+                rightValue = if (avgCost > 0) "${avgCost}ms" else "—",
+            )
         }
 
         // 接入信息
@@ -155,7 +149,14 @@ fun HomeScreen(
 }
 
 @Composable
-private fun StatusCard(running: Boolean, port: Int, onToggle: () -> Unit) {
+private fun StatusCard(
+    running: Boolean,
+    port: Int,
+    models: Int,
+    success: Int,
+    failed: Int,
+    onToggle: () -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = AppStyle.CardBackground),
@@ -185,7 +186,12 @@ private fun StatusCard(running: Boolean, port: Int, onToggle: () -> Unit) {
             }
 
             Text(
-                text = if (running) "监听端口 $port" else "点击下方按钮启动",
+                text = buildString {
+                    append(if (running) "监听端口 $port" else "点击下方按钮启动")
+                    append(" · 可用模型 $models")
+                    append(" · 成功 $success")
+                    append(" · 失败 $failed")
+                },
                 fontSize = 13.sp,
                 color = AppStyle.SubtitleText,
                 modifier = Modifier.padding(top = 4.dp),
@@ -208,32 +214,39 @@ private fun StatusCard(running: Boolean, port: Int, onToggle: () -> Unit) {
     }
 }
 
+/**
+ * 原版 3.9.3 `MainActivity.k()` 的两列统计行：上方小号灰字，
+ * 下方 19sp 粗体数值，左右各占一半。
+ */
 @Composable
-private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = AppStyle.CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(12.dp),
+private fun StatPairRow(
+    leftLabel: String,
+    leftValue: String,
+    rightLabel: String,
+    rightValue: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 7.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = value,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = AppStyle.BodyText,
-                fontFamily = FontFamily.Monospace,
-            )
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                color = AppStyle.SubtitleText,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
+        StatValue(label = leftLabel, value = leftValue, modifier = Modifier.weight(1f))
+        StatValue(label = rightLabel, value = rightValue, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun StatValue(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, fontSize = 12.5.sp, color = AppStyle.SubtitleText)
+        Text(
+            value,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            color = AppStyle.BodyText,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 

@@ -35,8 +35,14 @@ class UiCopyContractTest {
         }
 
         val settings = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/SettingsScreen.kt").readText()
+        val homeLayout = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/HomeScreen.kt").readText()
         assertTrue(settings.contains("统计已重置"))
         assertTrue(settings.contains("已导入 "))
+        assertTrue(homeLayout.contains("StatPairRow"))
+        assertTrue(homeLayout.contains("leftLabel = \"累计请求\""))
+        assertTrue(homeLayout.contains("rightLabel = \"成功率\""))
+        assertTrue(homeLayout.contains("leftLabel = \"缓存命中率\""))
+        assertTrue(homeLayout.contains("rightLabel = \"平均耗时\""))
     }
 
     private fun findProjectRoot(): File {
