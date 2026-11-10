@@ -5,7 +5,7 @@
 ## 最近验证
 
 - 本地 JVM 回归：core 125、providers 90，失败 0。
-- GitHub Actions：run #35—#52、#57—#111、#113—#118 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复；#112 的账号中心 token 行误插 `else` 导致 APK 编译失败，已由 #113 修复。地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
+- GitHub Actions：run #35—#52、#57—#111、#113—#119 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复；#112 的账号中心 token 行误插 `else` 导致 APK 编译失败，已由 #113 修复。地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
 - 主分支最新提交以 `git log -1` 为准；每次推送后由 CI 验证对应 HEAD。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
@@ -19,7 +19,7 @@
 | 开机自启 | `BootReceiver` 与 manifest 广播；设置项开启后通过 `startForegroundService` 拉起网关；前台服务通知标题/启动状态按 3.10.0 对齐，启动失败保留服务以便重试 | `UiCopyContractTest`、CI APK；真机开机广播与失败恢复未验证 |
 | 前台服务通知 | `GatewayService` 通知渠道与停止动作；Android 13+ 进入界面时请求 `POST_NOTIFICATIONS`，拒绝时明确提示 | CI APK；真机通知权限与后台保活未验证 |
 | 悬浮球 | `FloatingBallService` 显示共享网关运行状态、支持权限引导、尺寸更新、拖动边界与 3.10.0 通知标题；默认 52dp，界面与存储范围 1–96dp | CI APK；真机权限与悬浮窗未验证 |
-| 导出/导入配置 | `ConfigTransfer` 处理设置、账号、策略；整包配置与账号文件解析分离；导入/旧存档的数值统一经 `GatewaySettings.sanitized()` 收敛到界面允许范围，自定义中转站地址随账号一起恢复 | `UiCopyContractTest`、账号存档测试、CI APK；真机文件选择器未验证 |
+| 导出/导入配置 | `ConfigTransfer` 处理设置、账号、策略；整包配置与账号文件解析分离；导入/旧存档的数值统一经 `GatewaySettings.sanitized()` 收敛到界面允许范围，自定义中转站地址随账号一起恢复；兼容原版 `upstreams/profiles/keys` 字段，导出原版 keys 数组并合并启用 secret 到多密钥设置 | `UiCopyContractTest`、账号存档测试、CI APK；真机文件选择器未验证 |
 | 账号持久化与凭据序列化 | `AccountPreferences` 保存成功后发布；`Credential` 密封类序列化；`authExpiresAtMillis` 记录 Loomy/OAuth 到期时间，过期账号不参与模型目录和路由 | `AccountPersistenceTest`、`CredentialExpiryTest` |
 | 到期前刷新设备授权凭据 | `AccountCredentialRefresher` 将已保存账号映射回 Qoder/WorkBuddy 刷新协议，提前 5 分钟续期；轮换令牌、有效期和身份元数据原子写回；失败退避、并发编辑不覆盖；接进网关启动/周期维护、模型刷新与连通性检测，刷新后失效模型目录缓存 | `AccountCredentialRefresherTest`（8 项）、`CredentialRefreshCatalogTest`、CI APK；真实供应商刷新未验证 |
 | 策略库与策略注入 | `PolicyMatcher` / `PolicyInjector` / `PrefsPolicyStore` / `PolicyScreen`；固定绑定与自动匹配；帮助文案按 3.10.0 dex 全文对齐，访问日志记录策略命中/未注入原因 | `PolicyTest`、`PolicyGatewayTest`、`UiCopyContractTest`、CI APK |

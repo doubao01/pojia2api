@@ -197,7 +197,9 @@ fun SettingsScreen(vms: ViewModels) {
                         cfg.settings?.let { s -> vms.updateSettings { s } }
                         cfg.accounts?.let { vms.importAccounts(it, replace = true) }
                         cfg.policies?.let(vms::importPolicies)
-                        pendingMessage = "已导入 ${cfg.accounts?.size ?: 0} 个账号"
+                        val imported = (cfg.accounts?.size ?: 0) +
+                            (cfg.policies?.size ?: 0) + (cfg.keys?.size ?: 0)
+                        pendingMessage = "已导入 $imported 项"
                     }
                 },
             )
