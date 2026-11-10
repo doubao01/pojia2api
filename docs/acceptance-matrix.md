@@ -4,7 +4,7 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 104、providers 90，失败 0。
+- 本地 JVM 回归：core 105、providers 90，失败 0。
 - GitHub Actions：run #35—#52、#57—#95 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
 - 主分支最新提交以 `git log -1` 为准；每次推送后由 CI 验证对应 HEAD。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
@@ -15,7 +15,7 @@
 |---|---|---|
 | 端口、监听、访问密钥 | `GatewaySettings`、`GatewayRunner`、`GatewayConfig`；局域网开关绑定回环地址；访问密钥启用网关鉴权 | core 测试 / CI APK |
 | 调度：重试、超时、冷却、失败阈值 | `GatewayConfig` 接入整轮重试与 `withTimeout`；`HealthTracker` 负责失败阈值与冷却 | `GatewayRetryTest`、core 测试 |
-| 日志上限、重置统计、清空日志 | `GatewayRunner` 可配置内存日志上限；`GatewayCounters` 独立累计请求/成功/失败/耗时/token/缓存命中，不受日志裁剪影响；清空日志保留累计统计，重置统计同时清空日志与计数 | `GatewayCountersTest`（3 项）、`UiCopyContractTest`、CI APK |
+| 日志上限、重置统计、清空日志 | `GatewayRunner` 可配置内存日志上限；`GatewayCounters` 独立累计请求/成功/失败/耗时/token/缓存命中与 `byUpstream` 分上游计数，快照按原版 `SharedPreferences("stats")` 持久化；清空日志保留累计统计，重置统计同时清空日志、计数与磁盘快照 | `GatewayCountersTest`（4 项）、`UiCopyContractTest`、CI APK |
 | 开机自启 | `BootReceiver` 与 manifest 广播；设置项开启后通过 `startForegroundService` 拉起网关；前台服务通知标题/启动状态按 3.10.0 对齐，启动失败保留服务以便重试 | `UiCopyContractTest`、CI APK；真机开机广播与失败恢复未验证 |
 | 前台服务通知 | `GatewayService` 通知渠道与停止动作；Android 13+ 进入界面时请求 `POST_NOTIFICATIONS`，拒绝时明确提示 | CI APK；真机通知权限与后台保活未验证 |
 | 悬浮球 | `FloatingBallService` 显示共享网关运行状态、支持权限引导、尺寸更新、拖动边界与 3.10.0 通知标题 | CI APK；真机权限与悬浮窗未验证 |

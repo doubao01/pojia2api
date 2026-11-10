@@ -33,9 +33,26 @@ class GatewayCountersTest {
     }
 
     @Test
+    fun `snapshot round trip preserves upstream counts and latency samples`() {
+        val counters = GatewayCounters()
+        counters.record(200, 100, 100, 20, 40, "codebuddy/a1")
+        counters.record(200, 300, 100, 30, 60, "codebuddy/a1")
+        counters.record(500, 0, upstreamId = "qoder/a2")
+
+        val restored = GatewayCounters().apply { restore(counters.decode(counters.encode())) }
+        val snapshot = restored.snapshot()
+
+        assertEquals(3, snapshot.total)
+        assertEquals(200, snapshot.averageCostMillis)
+        assertEquals(mapOf("codebuddy/a1" to 2L, "qoder/a2" to 1L), snapshot.byUpstream)
+        assertEquals(50.0, snapshot.cacheHitRate!!, 0.0001)
+        assertEquals(GatewayCounters.Snapshot(), GatewayCounters().decode("not-json"))
+    }
+
+    @Test
     fun `reset clears every derived statistic`() {
         val counters = GatewayCounters()
-        counters.record(200, 10, 10, 5, 5)
+        counters.record(200, 10, 10, 5, 5, "codebuddy/a1")
         counters.reset()
 
         val snapshot = counters.snapshot()
@@ -43,6 +60,7 @@ class GatewayCountersTest {
         assertEquals(0, snapshot.success)
         assertEquals(0, snapshot.promptTokens)
         assertEquals(0, snapshot.cachedTokens)
+        assertEquals(emptyMap<String, Long>(), snapshot.byUpstream)
         assertNull(snapshot.cacheHitRate)
     }
 }

@@ -114,7 +114,13 @@ class UiCopyContractTest {
         assertTrue(runnerSource.contains("GatewayCounters"))
         assertTrue(runnerSource.contains("counters.reset()"))
         assertTrue(runnerSource.contains("counters.record("))
+        assertTrue(runnerSource.contains("upstreamId = filled.upstreamId"))
+        assertTrue(runnerSource.contains("statsStore?.save"))
         assertTrue(homeLayout.contains("vms.runner.stats.collectAsState()"))
+        val gateway = File(root, "core/src/main/kotlin/io/modelbridge/core/Gateway.kt").readText()
+        assertTrue(gateway.contains("lastUpstreamId"))
+        val statsStore = File(root, "app/src/main/kotlin/io/modelbridge/app/prefs/StatsStore.kt").readText()
+        assertTrue(statsStore.contains("const val KEY = \"stats\""))
     }
 
     private fun findProjectRoot(): File {

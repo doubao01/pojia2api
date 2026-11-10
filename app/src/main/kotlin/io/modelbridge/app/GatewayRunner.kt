@@ -2,6 +2,7 @@ package io.modelbridge.app
 
 import io.modelbridge.app.prefs.GatewaySettings
 import io.modelbridge.app.prefs.SettingsStore
+import io.modelbridge.app.prefs.StatsStore
 import io.modelbridge.core.GatewayCounters
 import io.modelbridge.core.Gateway
 import io.modelbridge.core.http.HttpServer
@@ -33,6 +34,7 @@ class GatewayRunner(
         CredentialRefreshSummary()
     },
     private val maintenanceIntervalMillis: Long = 5 * 60 * 1000L,
+    private val statsStore: StatsStore? = null,
 ) {
     /** 运行状态。 */
     private val _running = MutableStateFlow(false)
@@ -71,6 +73,13 @@ class GatewayRunner(
     private val _stats = MutableStateFlow(counters.snapshot())
     /** 独立累计统计，不受日志上限裁剪影响。 */
     val stats: StateFlow<GatewayCounters.Snapshot> = _stats.asStateFlow()
+
+    init {
+        statsStore?.let { store ->
+            counters.restore(store.load())
+            _stats.value = counters.snapshot()
+        }
+    }
 
     private var server: HttpServer? = null
     private var refreshJob: Job? = null
@@ -116,6 +125,7 @@ class GatewayRunner(
                             status = statusOf(result),
                             costMillis = cost,
                             message = diagnostics,
+                            upstreamId = gateway.lastUpstreamId,
                         ),
                     )
                     result
@@ -193,6 +203,7 @@ class GatewayRunner(
     fun resetStats() {
         counters.reset()
         _stats.value = counters.snapshot()
+        statsStore?.clear()
         clearLog()
     }
 
@@ -251,8 +262,10 @@ class GatewayRunner(
             promptTokens = filled.promptTokens,
             completionTokens = filled.completionTokens,
             cachedTokens = filled.cachedTokens,
+            upstreamId = filled.upstreamId,
         )
         _stats.value = counters.snapshot()
+        statsStore?.save(_stats.value)
         _log.value = (current + filled).takeLast(limit)
     }
 }
@@ -271,4 +284,6 @@ data class LogEntry(
     val completionTokens: Int = 0,
     /** 提示词里命中缓存的部分。 */
     val cachedTokens: Int = 0,
+    /** 本次实际尝试/命中的上游 `providerId/accountId`。 */
+    val upstreamId: String? = null,
 )

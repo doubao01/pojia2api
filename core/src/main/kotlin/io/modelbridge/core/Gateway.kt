@@ -111,6 +111,11 @@ class Gateway(
     var lastPolicyError: String? = null
         private set
 
+    /** 最近一次请求实际尝试/命中的上游，格式 `providerId/accountId`。 */
+    @Volatile
+    var lastUpstreamId: String? = null
+        private set
+
     private val json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
@@ -338,6 +343,7 @@ class Gateway(
 
         policyName = null
         lastPolicyError = null
+        lastUpstreamId = null
         // 每次从原始请求体注入，故障转移不叠加前一个账号的策略。
         // 重试按「整轮」计：先把账号按优先级走一遍做故障转移，
         // 整轮都失败后再从头重试一轮。这样单账号时是原地重试，
@@ -351,6 +357,7 @@ class Gateway(
                 // 已进冷却的账号本轮跳过，不浪费超时预算
                 if (!health.isAvailable(target.account.id)) continue
                 progressed = true
+                lastUpstreamId = "${target.provider.id}/${target.account.id}"
                 try {
                     val applied = applyPolicy(target.model.id, forwardedBody, target.account.fixedPolicyId, protocol)
                     val internal = applied?.first ?: original

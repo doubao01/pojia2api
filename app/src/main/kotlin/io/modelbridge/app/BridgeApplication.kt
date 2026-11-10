@@ -5,6 +5,7 @@ import io.modelbridge.app.prefs.AccountPreferences
 import io.modelbridge.app.prefs.DailyCheckinStore
 import io.modelbridge.app.prefs.PrefsPolicyStore
 import io.modelbridge.app.prefs.SettingsStore
+import io.modelbridge.app.prefs.StatsStore
 import io.modelbridge.core.AccountStore
 import io.modelbridge.core.Gateway
 import io.modelbridge.core.GatewayConfig
@@ -98,6 +99,9 @@ class AppContainer(private val app: Application) {
 
     /** 设置，持久化在 SharedPreferences。 */
     val settings = SettingsStore(app)
+
+    /** 累计统计，持久化在 SharedPreferences；不受日志上限裁剪。 */
+    val statsStore = StatsStore(app)
 
     /** 设备授权刷新客户端；公开构建没有 Qoder 客户端标识时仍保留 WorkBuddy 刷新。 */
     val deviceAuthClients: Map<String, DeviceAuthClient> = buildMap {
@@ -210,6 +214,7 @@ class AppContainer(private val app: Application) {
             gatewayProvider = { gateway },
             settings = settings,
             beforeCatalogRefresh = { credentialRefresher.refreshDue() },
+            statsStore = statsStore,
         ).also {
             onUsage = it::reportUsage
         }
