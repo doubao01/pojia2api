@@ -39,9 +39,9 @@ fun SettingsScreen(vms: ViewModels) {
         GroupTitle("监听")
         SettingsGroup {
             NumberRow(
-                label = "端口",
+                label = "监听端口",
                 value = settings.port,
-                hint = "网关监听的端口，范围 1024–65535",
+                hint = "网关监听端口，范围 1024–65535",
                 range = 1024..65535,
                 onValueChange = { vms.updateSettings { s -> s.copy(port = it) } },
             )
@@ -69,7 +69,7 @@ fun SettingsScreen(vms: ViewModels) {
             NumberRow(
                 label = "最大重试次数",
                 value = settings.maxRetries,
-                hint = "单个请求最多重试几次（0–5）",
+                hint = "最大重试次数，0–5",
                 range = 0..5,
                 onValueChange = { vms.updateSettings { s -> s.copy(maxRetries = it) } },
             )
@@ -77,25 +77,25 @@ fun SettingsScreen(vms: ViewModels) {
             NumberRow(
                 label = "失败阈值",
                 value = settings.failureThreshold,
-                hint = "连续失败多少次后让账号冷却（1–20）",
+                hint = "连续失败多少次进入冷却（1–20）",
                 range = 1..20,
                 onValueChange = { vms.updateSettings { s -> s.copy(failureThreshold = it) } },
             )
             RowDivider()
             NumberRow(
-                label = "冷却时长",
+                label = "冷却时长（秒）",
                 value = settings.cooldownSeconds,
                 suffix = " 秒",
-                hint = "账号冷却多久后恢复（5–600 秒）",
+                hint = "冷却时长（秒），5–600",
                 range = 5..600,
                 onValueChange = { vms.updateSettings { s -> s.copy(cooldownSeconds = it) } },
             )
             RowDivider()
             NumberRow(
-                label = "请求超时",
+                label = "请求超时（秒）",
                 value = settings.requestTimeoutSeconds,
                 suffix = " 秒",
-                hint = "单次上游请求的超时时间（5–600 秒）",
+                hint = "请求超时（秒），5–600",
                 range = 5..600,
                 onValueChange = { vms.updateSettings { s -> s.copy(requestTimeoutSeconds = it) } },
             )
@@ -104,7 +104,7 @@ fun SettingsScreen(vms: ViewModels) {
                 label = "日志上限",
                 value = settings.logLimit,
                 suffix = " 条",
-                hint = "内存里保留多少条访问日志（50–20000）",
+                hint = "日志最多保留条数（50–20000）",
                 range = 50..20000,
                 onValueChange = { vms.updateSettings { s -> s.copy(logLimit = it) } },
             )
@@ -143,7 +143,7 @@ fun SettingsScreen(vms: ViewModels) {
             SwitchRow(
                 label = "去掉客户端指纹",
                 checked = settings.stripClientFingerprint,
-                hint = "转发时去掉 User-Agent 等识别头",
+                hint = "去掉客户端指纹",
                 onCheckedChange = { vms.updateSettings { s -> s.copy(stripClientFingerprint = it) } },
             )
         }
