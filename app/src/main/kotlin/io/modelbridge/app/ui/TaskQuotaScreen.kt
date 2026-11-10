@@ -119,8 +119,9 @@ fun TaskQuotaScreen(vms: ViewModels, onBack: () -> Unit) {
         SettingsGroup {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "按供应商一键签到与领取任务；已接入 WorkBuddy 签到、成长任务和额度，" +
-                        "Qoder 额度；其它供应商暂不支持签到或任务。\n\n" +
+                    "按供应商一键签到与领取任务；已接入 WorkBuddy 签到/成长任务/额度、" +
+                        "Qoder 额度、Loomy 新人任务/积分、小浣熊/CatPaw/Meoo/Tabbit/Trae 签到或额度；" +
+                        "其它供应商暂不支持签到或任务。\n\n" +
                         "网关统计中的请求数、token 用量和缓存命中率不等于供应商额度。本页不会把本地统计伪装成额度。",
                     fontSize = 13.sp,
                     color = AppStyle.SubtitleText,

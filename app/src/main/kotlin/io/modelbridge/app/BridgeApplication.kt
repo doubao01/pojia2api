@@ -21,8 +21,13 @@ import io.modelbridge.providers.auth.QoderClientIds
 import io.modelbridge.providers.auth.QoderDeviceAuth
 import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
 import io.modelbridge.providers.account.AccountServiceRegistry
+import io.modelbridge.providers.account.CatpawAccountService
 import io.modelbridge.providers.account.LoomyAccountService
+import io.modelbridge.providers.account.MeooAccountService
 import io.modelbridge.providers.account.QoderAccountService
+import io.modelbridge.providers.account.RaccoonAccountService
+import io.modelbridge.providers.account.TabbitAccountService
+import io.modelbridge.providers.account.TraeAccountService
 import io.modelbridge.providers.account.WorkBuddyAccountService
 import io.modelbridge.spi.HttpClient
 import io.modelbridge.spi.Provider
@@ -116,6 +121,11 @@ class AppContainer(private val app: Application) {
             WorkBuddyAccountService(httpClient),
             QoderAccountService(httpClient),
             LoomyAccountService(httpClient),
+            CatpawAccountService(httpClient),
+            RaccoonAccountService(httpClient),
+            TabbitAccountService(httpClient),
+            MeooAccountService(httpClient),
+            TraeAccountService(httpClient),
         ),
     )
 

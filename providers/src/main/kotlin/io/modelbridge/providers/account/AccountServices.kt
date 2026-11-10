@@ -212,6 +212,11 @@ abstract class HttpProviderAccountService(
 
     protected fun JsonObject?.array(name: String): JsonArray? = this?.get(name) as? JsonArray
     protected fun JsonObject?.obj(name: String): JsonObject? = this?.get(name) as? JsonObject
+    protected fun JsonObject?.boolean(vararg names: String): Boolean? =
+        names.asSequence().mapNotNull { name ->
+            (this?.get(name) as? JsonPrimitive)?.contentOrNull
+                ?.let { it.equals("true", ignoreCase = true) || it == "1" }
+        }.firstOrNull()
 
     protected fun jsonBody(fields: Map<String, JsonElement>): ByteArray =
         JsonObject(fields).toString().toByteArray(StandardCharsets.UTF_8)

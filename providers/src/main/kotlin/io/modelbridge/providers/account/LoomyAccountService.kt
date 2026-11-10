@@ -5,8 +5,6 @@ import io.modelbridge.spi.Credential
 import io.modelbridge.spi.HttpClient
 import io.modelbridge.spi.HttpRequest
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import java.security.SecureRandom
 
 /**
@@ -177,10 +175,6 @@ class LoomyAccountService(
         if (loomyVersion.isNotBlank()) put("loomy-version", loomyVersion)
         put("Accept", "application/json")
     }
-
-    private fun JsonObject?.boolean(name: String): Boolean? =
-        (this?.get(name) as? JsonPrimitive)?.contentOrNull
-            ?.let { it.equals("true", ignoreCase = true) || it == "1" }
 
     private suspend fun requestOrNull(request: HttpRequest): JsonResponse? = try {
         request(request)
