@@ -107,6 +107,9 @@ class UiCopyContractTest {
         assertTrue(settingsStore.contains("val safe = value.sanitized()"))
         assertTrue(settingsStore.contains("putInt(K_FLOATING_SIZE, safe.floatingBallSizeDp)"))
         assertTrue(settingsStore.contains(").sanitized()"))
+        assertTrue(homeLayout.contains("LanAddresses.pick"))
+        assertTrue(homeLayout.contains("仅本机可访问"))
+        assertTrue(homeLayout.contains("未检测到局域网地址"))
     }
 
     private fun findProjectRoot(): File {

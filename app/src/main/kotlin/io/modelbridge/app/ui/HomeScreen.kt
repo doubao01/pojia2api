@@ -20,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.widget.Toast
 import io.modelbridge.app.ViewModels
+import io.modelbridge.core.LanAddresses
 
 /**
  * 首页：网关概览。
@@ -101,10 +103,17 @@ fun HomeScreen(
 
         // 接入信息
         SectionTitle("Agent 接入地址")
-        val lanUrl = if (running) "http://本机IP:$port/v1" else "网关已停止"
+        val lanAddress = remember(running, settings.allowLan) {
+            if (running && settings.allowLan) LanAddresses.pick(LanAddresses.current()) else null
+        }
+        val lanUrl = when {
+            !running -> "网关已停止"
+            !settings.allowLan -> "仅本机可访问"
+            else -> LanAddresses.baseUrl(lanAddress, port) ?: "未检测到局域网地址"
+        }
         val localUrl = if (running) "http://127.0.0.1:$port/v1" else "网关已停止"
         InfoCard {
-            CopyRow("局域网", lanUrl, running)
+            CopyRow("局域网", lanUrl, running && settings.allowLan && lanAddress != null)
             CopyRow("仅本机", localUrl, running)
             InfoRow(
                 "访问密钥",
