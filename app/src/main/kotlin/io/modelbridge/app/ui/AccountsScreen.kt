@@ -95,8 +95,10 @@ fun AccountsScreen(vms: ViewModels) {
             )
             RowDivider()
             ActionRow(
-                label = if (scanning) "探测 127.0.0.1 端口…" else "扫描本机端口",
-                hint = if (scanned.isEmpty()) {
+                label = if (scanning) "正在扫描" else "扫描本机端口",
+                hint = if (scanning) {
+                    "探测 127.0.0.1 端口…"
+                } else if (scanned.isEmpty()) {
                     "扫描本机端口自动发现，或手动添加任意 OpenAI 兼容地址"
                 } else {
                     "发现：${scanned.joinToString(", ") { ":$it" }}"
@@ -338,7 +340,12 @@ private fun AccountRow(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            TextButton(onClick = onCheck) { Text("检测连通性", fontSize = 12.sp) }
+            TextButton(onClick = onCheck) {
+                Text(
+                    if (checkResult == "检测中…") "正在检测" else "检测连通性",
+                    fontSize = 12.sp,
+                )
+            }
             TextButton(onClick = onEdit) { Text("编辑", fontSize = 12.sp) }
             TextButton(onClick = { selectPolicy = true }) { Text("策略", fontSize = 12.sp) }
             TextButton(onClick = { confirmDelete = true }) {

@@ -293,12 +293,12 @@ class ViewModels(
             val tasks = accounts.firstNotNullOfOrNull { account ->
                 val result = container.accountServices.tasks(account)
                 result.takeIf { it.tasks.isNotEmpty() }
-            } ?: ProviderTaskList(error = "没有可显示的任务")
+            } ?: ProviderTaskList(error = "任务列表拉取失败：没有可显示的任务")
             _taskQuota.value = _taskQuota.value.copy(
                 busy = false,
                 quotas = quotas,
                 tasks = tasks.tasks,
-                tasksError = tasks.error,
+                tasksError = tasks.error.ifBlank { "没有可显示的任务" },
                 lastRefreshedAtMillis = System.currentTimeMillis(),
             )
         }
@@ -321,12 +321,18 @@ class ViewModels(
             val failed = actionable.count { !it.second.ok }
             val skipped = results.count { it.second.unsupported }
             val summary = buildList {
-                if (success > 0) add("成功 $success 个")
-                if (failed > 0) add("失败 $failed 个")
+                if (success > 0) add("一键完成：成功 $success 个")
+                else if (actionable.isNotEmpty()) add("一键完成：失败 $failed 个")
+                if (failed > 0 && success > 0) add("失败 $failed 个")
                 if (skipped > 0) add("跳过 $skipped 个")
             }.joinToString("；").ifBlank { "没有可执行的账号" }
             val details = actionable.joinToString("；") { (label, result) ->
-                "$label：${result.message.ifBlank { if (result.ok) "已完成" else "未知原因" }}"
+                val fallback = if (result.ok) {
+                    if (capability == AccountCapability.CheckIn) "签到成功" else "已完成"
+                } else {
+                    if (capability == AccountCapability.CheckIn) "签到失败" else "任务列表拉取失败"
+                }
+                "$label：${result.message.ifBlank { fallback }}"
             }
             val result = AccountActionResult(
                 ok = success > 0,

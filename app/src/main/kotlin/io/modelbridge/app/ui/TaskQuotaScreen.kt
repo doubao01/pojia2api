@@ -111,7 +111,11 @@ private fun TaskCenter(
         )
         RowDivider()
         if (state.tasks.isEmpty()) {
-            TaskRow("任务列表", "没有可显示的任务", state.tasksError.ifBlank { "上游未返回任务" })
+            TaskRow(
+                "任务列表",
+                "没有可用任务",
+                state.tasksError.ifBlank { "没有可显示的任务" },
+            )
         } else {
             state.tasks.forEachIndexed { index, task ->
                 if (index > 0) RowDivider()
@@ -240,7 +244,7 @@ private fun AccountCenter(
 private fun QuotaSummary(state: ViewModels.TaskQuotaUiState) {
     val quotas = state.quotas.values.filter { it.known && it.entries.isNotEmpty() }
     if (quotas.isEmpty()) {
-        TaskRow("可用积分", "查询失败", "上游未返回可解析额度")
+        TaskRow("可用积分", "查询失败", "额度查询失败 · 上游未返回可解析额度")
         return
     }
     val entries = quotas.flatMap { it.entries }

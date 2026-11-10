@@ -74,7 +74,8 @@ class MainActivity : ComponentActivity() {
         val payload = ConfigTransfer.pendingJson
         ConfigTransfer.pendingJson = null
         if (uri != null && payload != null) {
-            writeTextToUri(this, uri, payload)
+            val written = writeTextToUri(this, uri, payload)
+            vms.toast(if (written) "配置已导出" else "导出失败：无法写入文件")
         }
     }
 
