@@ -4,7 +4,7 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 88、providers 88，失败 0。
+- 本地 JVM 回归：core 90、providers 88，失败 0。
 - GitHub Actions：run #35—#52、#57—#77 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
 - 主分支最新提交以 `git log -1` 为准；每次推送后由 CI 验证对应 HEAD。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
@@ -30,6 +30,7 @@
 | 连通性检测、端口扫描 | `ViewModels.checkAccount` 与本机端口扫描 | CI APK |
 | 首页统计、缓存命中率、token | `HomeScreen` 按 3.9.3 两列 key/value 展示累计请求/成功率、输入/输出 token、缓存命中率/平均耗时；成功/失败/可用模型放状态卡副标题；复制地址与「已复制」反馈保留 | `UiCopyContractTest`、CI APK；真机像素核对未验证 |
 | 首页复制地址、管理入口 | 复制本机/局域网地址；账号、策略、任务/额度入口 | CI APK |
+| 模型页筛选与空态 | `ModelsScreen` 支持「全部供应商」/指定供应商筛选，显示「共 N 个模型」；按账号与拉取状态区分「还没有可用模型」「没有供应商提供模型」「已登录但没有拉到模型」 | `ModelFilterTest`（2 项）、`UiCopyContractTest`、CI APK |
 | 任务/额度入口与页面 | 首页「任务管理」与「账号管理」分别进入独立页面模式；任务管理显示一键签到、一键任务、任务列表、额度汇总，账号管理逐账号显示可用积分、额度详情、今日签到状态和单账号动作；`AccountServiceRegistry` 已按静态契约接入多家供应商，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | `AccountCenterModeContractTest`、账号业务测试（29 项）、3.9.3 反编译契约、CI APK；真实供应商接口与像素布局未验证 |
 | 账号业务与逐账号积分/签到 | `providerGroups` 与独立账号管理页均按 CREDIT_REFRESH/CHECKIN 显示真实可用积分、额度详情、今日已签到/未签到，提供单账号「刷新积分」「签到」；账号行显示国内/国际版、启用中、N 天后到期自动续期；本地签到状态按 Asia/Shanghai 自然日持久化；账号管理页按自然日自动检测一次账号可用性并显示连通结果 | `AccountDailyCheckinTest`（2 项）、`AccountHealthScheduleTest`（3 项）、`AccountStatusFormatTest`（3 项）、`AccountCenterModeContractTest`、账号业务测试、CI APK；真实服务端签到未验证 |
 | 日志页清空按钮 | `LogScreen` 提供清空按钮、空态「暂无日志」，副标题按原版显示「最近 N 条」；`GatewayRunner.clearLog` 清空内存日志 | `UiCopyContractTest`、CI APK |

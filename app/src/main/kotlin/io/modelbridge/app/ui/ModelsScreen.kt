@@ -14,6 +14,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -21,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.modelbridge.app.ViewModels
+import io.modelbridge.core.ModelFilter
 import io.modelbridge.spi.ModelInfo
 
 /**
@@ -37,6 +42,9 @@ fun ModelsScreen(vms: ViewModels) {
     val models = vms.models.collectAsState()
     val loading = vms.loadingModels.collectAsState()
     val lastError = vms.modelsError.collectAsState()
+    var selectedProvider by remember { mutableStateOf(ModelFilter.ALL_PROVIDERS) }
+    val providers = ModelFilter.providerIds(models.value, ModelInfo::providerId)
+    val visibleModels = ModelFilter.byProvider(models.value, selectedProvider, ModelInfo::providerId)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -52,7 +60,7 @@ fun ModelsScreen(vms: ViewModels) {
                     color = AppStyle.BodyText,
                 )
                 Text(
-                    "${models.value.size} 个模型",
+                    "共 ${visibleModels.size} 个模型",
                     fontSize = 12.sp,
                     color = AppStyle.SubtitleText,
                     modifier = Modifier.padding(top = 2.dp),
@@ -66,8 +74,32 @@ fun ModelsScreen(vms: ViewModels) {
             }
         }
 
+        if (providers.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                androidx.compose.material3.TextButton(onClick = {
+                    selectedProvider = ModelFilter.ALL_PROVIDERS
+                }) {
+                    Text("全部供应商", fontSize = 12.sp)
+                }
+                providers.forEach { providerId ->
+                    androidx.compose.material3.TextButton(onClick = {
+                        selectedProvider = providerId
+                    }) {
+                        Text(
+                            vms.providerDisplayName(providerId),
+                            fontSize = 12.sp,
+                            color = if (selectedProvider == providerId) AppStyle.Accent else AppStyle.SubtitleText,
+                        )
+                    }
+                }
+            }
+        }
+
         when {
-            models.value.isEmpty() && loading.value -> {
+            visibleModels.isEmpty() && loading.value -> {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
                     contentAlignment = Alignment.Center,
@@ -84,22 +116,23 @@ fun ModelsScreen(vms: ViewModels) {
                 }
             }
 
-            models.value.isEmpty() -> {
+            visibleModels.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         val accounts = vms.accounts.collectAsState().value
+                        val noAccounts = accounts.none { it.enabled }
                         Text(
-                            text = if (accounts.none { it.enabled }) "还没有登录账号" else "还没有可用模型",
+                            text = if (noAccounts) "还没有可用模型" else "没有供应商提供模型",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = AppStyle.BodyText,
                         )
                         Text(
-                            text = if (accounts.none { it.enabled }) {
-                                "到「供应商」页点「登录账号」添加"
+                            text = if (noAccounts) {
+                                "先到「供应商」页登录账号，或在下面添加中转站"
                             } else {
                                 "已登录但没有拉到模型，打开「日志」看具体原因"
                             },
@@ -116,7 +149,7 @@ fun ModelsScreen(vms: ViewModels) {
                     modifier = Modifier.padding(top = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(AppStyle.CardSpacing),
                 ) {
-                    models.value.forEach { model -> ModelCard(model) }
+                    visibleModels.forEach { model -> ModelCard(model) }
                 }
                 if (loading.value) {
                     Row(
