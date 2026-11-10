@@ -5,8 +5,8 @@
 ## 最近验证
 
 - 本地 JVM 回归：core 78、providers 81，失败 0。
-- GitHub Actions：run #33（Qoder 客户端标识）、#34（凭据有效期）、#35（到期前续期）、#36（任务/额度供应商协议）、#37（Loomy 任务积分）均为 `内核测试 success`、`构建 APK success`。
-- 最近主分支提交：`6ba2011`。
+- GitHub Actions：run #33（Qoder 客户端标识）、#34（凭据有效期）、#35（到期前续期）、#36（任务/额度供应商协议）、#37（Loomy 任务积分）、#38（多供应商任务额度协议）均为 `内核测试 success`、`构建 APK success`。
+- 最近主分支提交：`d35f65b`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
 ## 功能矩阵
