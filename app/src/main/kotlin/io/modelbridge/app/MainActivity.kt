@@ -42,6 +42,7 @@ import io.modelbridge.app.ui.ModelsScreen
 import io.modelbridge.app.ui.PillTabBar
 import io.modelbridge.app.ui.PolicyScreen
 import io.modelbridge.app.ui.SettingsScreen
+import io.modelbridge.app.ui.AccountCenterMode
 import io.modelbridge.app.ui.TaskQuotaScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
@@ -167,10 +168,10 @@ class MainActivity : ComponentActivity() {
 private fun MainScreen(vms: ViewModels) {
     var tab by remember { mutableIntStateOf(0) }
     var showPolicies by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showTasks by remember { androidx.compose.runtime.mutableStateOf(false) }
-    BackHandler(enabled = showPolicies || showTasks) {
+    var centerMode by remember { androidx.compose.runtime.mutableStateOf<AccountCenterMode?>(null) }
+    BackHandler(enabled = showPolicies || centerMode != null) {
         showPolicies = false
-        showTasks = false
+        centerMode = null
     }
 
     Box(
@@ -218,17 +219,30 @@ private fun MainScreen(vms: ViewModels) {
                             bottom = AppStyle.ContentBottomInset,
                         ),
                 ) {
-                    if (showPolicies) {
+                    if (centerMode != null) {
+                        TaskQuotaScreen(
+                            vms,
+                            onBack = { centerMode = null },
+                            mode = centerMode!!,
+                        )
+                    } else if (showPolicies) {
                         PolicyScreen(vms, onBack = { showPolicies = false })
-                    } else if (showTasks) {
-                        TaskQuotaScreen(vms, onBack = { showTasks = false })
                     } else {
                         when (tab) {
                             0 -> HomeScreen(
                                 vms,
-                                onOpenAccounts = { showTasks = false; tab = 1 },
-                                onOpenPolicies = { showTasks = false; showPolicies = true },
-                                onOpenTasks = { showPolicies = false; showTasks = true },
+                                onOpenAccounts = {
+                                    showPolicies = false
+                                    centerMode = AccountCenterMode.Accounts
+                                },
+                                onOpenPolicies = {
+                                    centerMode = null
+                                    showPolicies = true
+                                },
+                                onOpenTasks = {
+                                    showPolicies = false
+                                    centerMode = AccountCenterMode.Tasks
+                                },
                             )
                             1 -> AccountsScreen(vms)
                             2 -> ModelsScreen(vms)
@@ -269,7 +283,11 @@ private fun MainScreen(vms: ViewModels) {
         PillTabBar(
             tabs = TABS,
             selectedIndex = tab,
-            onSelect = { showPolicies = false; showTasks = false; tab = it },
+            onSelect = {
+                showPolicies = false
+                centerMode = null
+                tab = it
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = AppStyle.TabBarMarginBottom),

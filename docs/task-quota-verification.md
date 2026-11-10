@@ -26,13 +26,13 @@
 - `MeooAccountService`：Cookie 登录态下的每日登录赠送状态和积分余额。
 - `RaccoonAccountService` / `CatpawAccountService`：小浣熊 Bearer 积分余额、CatPaw X-Auth-Token 积分余额。
 - `AStudioAccountService`：用已保存 API Key 查询 `/points/balance` 与 `/membership/me`，汇总普通积分、星火积分和套餐名；版本/客户端上下文由宿主注入。
-- UI：`TaskQuotaScreen` 进入页面时刷新；按钮按供应商逐账号执行并汇总「成功/失败/跳过」；任务列表显示真实状态与奖励；额度按套餐/共享/加购/积分分类汇总；失败显示上游错误或「查询失败」，不用本地请求数和 token 用量伪造额度。
+- UI：首页「任务管理」与「账号管理」分别进入独立页面模式；任务管理进入时刷新批量任务/额度，账号管理进入时逐账号刷新积分/签到；按钮按供应商逐账号执行并汇总「成功/失败/跳过」；任务列表显示真实状态与奖励；额度按套餐/共享/加购/积分分类汇总；失败显示上游错误或「查询失败」，不用本地请求数和 token 用量伪造额度。
 
 ## 本地验证
 
 - `AccountServicesTest` 8 项、`LoomyAccountServiceTest` 4 项、`BearerCreditServicesTest` 4 项、`TabbitAccountServiceTest` 4 项、`MeooAccountServiceTest` 3 项、`TraeAccountServiceTest` 4 项、`AStudioAccountServiceTest` 2 项：覆盖已接入供应商的请求头、路径、响应解析、签到与任务状态、失败隔离。
 - 未实现边界：AgentMore 的 `X-Sign` 依赖原 APK 固定盐值，不从反编译源码复制，因此未生成不可信签名请求；Dangbei 原版 `c(account)` 直接返回 `null`，保持明确不支持。
-- `./gradlew :core:test :providers:test --offline`：core 83、providers 85，失败 0（含去客户端指纹规则扩展）。
+- `./gradlew :core:test :providers:test --offline`：core 84、providers 85，失败 0。
 - `AccountDailyCheckinTest` 2 项：按 Asia/Shanghai 自然日和账号 ID 生成签到键，验证同日幂等、跨日清除、账号隔离。
 - 供应商页账号行按 `CREDIT_REFRESH` / `CHECKIN` 能力展示真实可用积分、额度详情、今日已签到/未签到，并提供单账号「刷新积分」「签到」；签到状态持久化在 `DailyCheckinStore`，不把本地缓存冒充服务端记录。
 - CI 负责 Android `:app:assembleDebug` 编译与打包；JVM 测试不覆盖 Android UI 渲染。
@@ -40,5 +40,6 @@
 ## 边界
 
 - 3.9.3 为 JADX 反编译源码，部分方法存在寄存器/控制流还原警告；3.10.0 只提供 dex 字符串证据。请求与响应字段已按静态源码实现，但真实服务端是否接受请求、风控头、限频、幂等和额度单位仍需真机抓包验证。
-- 原版把「任务管理」和「账号管理」拆成两个页面；ModelBridge 目前仍合并成 `TaskQuotaScreen`，但供应商页账号行已补逐账号额度与签到状态，页面拆分和像素布局仍未对齐。
+- `AccountCenterModeContractTest`：静态验证首页两个入口分别对应任务管理/账号管理，且两个模式渲染到不同子页。
+- 原版把「任务管理」和「账号管理」拆成两个页面；ModelBridge 现已按两个独立页面模式拆分并复用同一真实数据层，剩余差异是页面分组和像素布局的真机核对。
 - 未逐家实现的供应商在页面中显示不支持或查询失败；不会生成虚构额度。
