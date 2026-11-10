@@ -101,7 +101,7 @@ private fun TaskCenter(
         RowDivider()
         ActionRow(
             label = "一键任务",
-            value = if (state.busy) "正在任务…" else "执行",
+            value = if (state.busy) "正在执行…" else "执行",
             hint = "逐账号领取可领任务",
             onClick = { if (!state.busy) vms.claimAllAccountTasks() },
         )
@@ -117,7 +117,7 @@ private fun TaskCenter(
             TaskRow(
                 "任务列表",
                 "没有可用任务",
-                state.tasksError.ifBlank { "没有可显示的任务" },
+                state.tasksError.ifBlank { "当前供应商均不支持签到或任务" },
             )
         } else {
             state.tasks.forEachIndexed { index, task ->

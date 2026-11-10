@@ -309,12 +309,12 @@ class ViewModels(
             val tasks = accounts.firstNotNullOfOrNull { account ->
                 val result = container.accountServices.tasks(account)
                 result.takeIf { it.tasks.isNotEmpty() }
-            } ?: ProviderTaskList(error = "任务列表拉取失败：没有可显示的任务")
+            } ?: ProviderTaskList(error = "当前供应商均不支持签到或任务")
             _taskQuota.value = _taskQuota.value.copy(
                 busy = false,
                 quotas = quotas,
                 tasks = tasks.tasks,
-                tasksError = tasks.error.ifBlank { "没有可显示的任务" },
+                tasksError = tasks.error.ifBlank { "当前供应商均不支持签到或任务" },
                 lastRefreshedAtMillis = System.currentTimeMillis(),
             )
         }

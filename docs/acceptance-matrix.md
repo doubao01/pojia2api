@@ -5,7 +5,7 @@
 ## 最近验证
 
 - 本地 JVM 回归：core 116、providers 90，失败 0。
-- GitHub Actions：run #35—#52、#57—#104 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
+- GitHub Actions：run #35—#52、#57—#105 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复，地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
 - 主分支最新提交以 `git log -1` 为准；每次推送后由 CI 验证对应 HEAD。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
@@ -32,7 +32,7 @@
 | 首页统计、缓存命中率、token | `HomeScreen` 按 3.9.3 两列 key/value 展示累计请求/成功率、输入/输出 token、缓存命中率/平均耗时；数值来自 `GatewayCounters` 独立累计统计，日志达到上限后不再丢失；成功/失败/可用模型放状态卡副标题；复制地址与「已复制」反馈保留 | `GatewayCountersTest`、`UiCopyContractTest`、CI APK；真机像素核对未验证 |
 | 首页复制地址、管理入口 | 复制仅本机地址；局域网开启时从网卡枚举真实 site-local IPv4 并生成 `http://IP:端口/v1`，关闭/无地址时明确显示「仅本机可访问」/「未检测到局域网地址」且不可复制；账号、策略、任务/额度入口 | `LanAddressesTest`（3 项）、`UiCopyContractTest`、CI APK |
 | 模型页筛选与空态 | `ModelsScreen` 支持「全部供应商」/指定供应商筛选，显示「共 N 个模型」；按账号与拉取状态区分「还没有可用模型」「没有供应商提供模型」「已登录但没有拉到模型」 | `ModelFilterTest`（2 项）、`UiCopyContractTest`、CI APK |
-| 任务/额度入口与页面 | 首页「任务管理」与「账号管理」分别进入独立页面模式；任务管理显示一键签到、一键任务、任务列表、额度汇总，账号管理逐账号显示可用积分、额度详情、今日签到状态和单账号动作；`AccountServiceRegistry` 已按静态契约接入多家供应商，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | `AccountCenterModeContractTest`、账号业务测试（29 项）、3.9.3 反编译契约、CI APK；真实供应商接口与像素布局未验证 |
+| 任务/额度入口与页面 | 首页「任务管理」与「账号管理」分别进入独立页面模式；任务管理显示一键签到、一键任务、任务列表、额度汇总，任务空态按 3.9.3 显示「没有可用任务」「当前供应商均不支持签到或任务」，批量执行态显示「正在执行…」；账号管理逐账号显示可用积分、额度详情、今日签到状态和单账号动作；`AccountServiceRegistry` 已按静态契约接入多家供应商，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | `AccountCenterModeContractTest`、账号业务测试（29 项）、3.9.3 反编译契约、CI APK；真实供应商接口与像素布局未验证 |
 | 账号业务与逐账号积分/签到 | `providerGroups` 与独立账号管理页均按 CREDIT_REFRESH/CHECKIN 显示真实可用积分、额度详情、今日已签到/未签到，提供单账号「刷新积分」「签到」；账号行显示国内/国际版、启用中、N 天后到期自动续期；本地签到状态按 Asia/Shanghai 自然日持久化；账号管理页按自然日自动检测一次账号可用性并显示连通结果 | `AccountDailyCheckinTest`（2 项）、`AccountHealthScheduleTest`（3 项）、`AccountStatusFormatTest`（3 项）、`AccountCenterModeContractTest`、账号业务测试、CI APK；真实服务端签到未验证 |
 | 日志页清空按钮 | `LogScreen` 提供清空按钮、空态「暂无日志」，副标题按原版显示「最近 N 条」；每条日志显示耗时、实际命中的上游、策略/指纹诊断与 token 用量；`GatewayRunner.clearLog` 清空内存日志、保留累计统计 | `UiCopyContractTest`、CI APK |
 | 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 dex 与 3.9.3 `z/g.java` 规则清理计费头、Claude/Codex/ZCode/DS Harness 身份句、模板句和空模板参数；身份句按原版替换为中性表述而不误删；网关记录规则级诊断，解析失败回退原文；模型和工具参数保留 | `ClientFingerprintStripperTest`（9 项）、CI APK；请求头指纹规则因静态规则表被 JADX 截断尚未完整复刻 |
