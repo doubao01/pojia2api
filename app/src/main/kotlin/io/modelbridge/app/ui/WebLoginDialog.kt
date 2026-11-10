@@ -64,11 +64,17 @@ fun WebLoginDialog(
                 Text(
                     text = when {
                         loginUrl == null -> "该供应商未提供网页登录地址，请使用「手动填 Cookie」。"
-                        else -> "在下方页面用浏览器登录，登录完成后点「我已登录完成」自动获取凭据。"
+                        else -> WebLoginCopy.hintFor(provider.id)
                     },
                     fontSize = 12.sp,
                     color = AppStyle.SubtitleText,
                     modifier = Modifier.padding(bottom = 8.dp),
+                )
+                Text(
+                    text = if (loading) "浏览器通道：页面加载中" else "浏览器通道：就绪",
+                    fontSize = 11.sp,
+                    color = AppStyle.SubtitleText,
+                    modifier = Modifier.padding(bottom = 4.dp),
                 )
 
                 if (loginUrl != null) {
@@ -149,6 +155,23 @@ fun WebLoginDialog(
             TextButton(onClick = onDismiss) { Text("取消") }
         },
     )
+}
+
+/** 3.10.0 dex 中为不同供应商配置的下方页面登录提示。 */
+private object WebLoginCopy {
+    fun hintFor(providerId: String): String = when (providerId) {
+        "deepseek" -> "在下方页面登录 DeepSeek 账号，登录后自动识别凭证"
+        "wenxin" -> "在下方官方页面里登录（手机号或账号密码都行），登录成功后自动完成"
+        "zhipu" -> "在下方页面登录智谱清言账号，登录后自动识别凭证"
+        "astudio" -> "在下方页面登录阿里云账号，登录后自动识别凭证"
+        "catpaw" -> "在下方页面完成美团账号授权，授权后自动完成登录"
+        "codebuddy", "qoder" -> "在下方页面确认授权，确认后自动完成登录"
+        "dangbei" -> "在下方页面点击登录按钮完成登录，登录后自动识别凭证"
+        "loomy" -> "用百度账号手机号 + 验证码登录，登录后自动识别凭证"
+        "tabbit", "meoo", "trae", "raccoon", "agentmore" ->
+            "选择服务器后打开登录页，登录在下方页面内完成；本页会自动登记凭证，凭证仅保存在本机。"
+        else -> "在下方页面完成登录，登录成功后自动识别凭证"
+    }
 }
 
 /**
