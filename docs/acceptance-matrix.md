@@ -28,7 +28,7 @@
 | 连通性检测、端口扫描 | `ViewModels.checkAccount` 与本机端口扫描 | CI APK |
 | 首页统计、缓存命中率、token | `GatewayRunner` 使用真实上游 `Usage`，首页显示请求/成功率/耗时/缓存/token | core 测试 / CI APK |
 | 首页复制地址、管理入口 | 复制本机/局域网地址；账号、策略、任务/额度入口 | CI APK |
-| 任务/额度入口与页面 | `TaskQuotaScreen` 独立页面；接口未实现时明确显示“未提供”，不伪造额度 | CI APK |
+| 任务/额度入口与页面 | `TaskQuotaScreen` 独立页面；按 3.10.0 文案显示一键签到、一键任务、任务列表、套餐/共享/加购额度；接口未实现时明确显示“未提供”，不伪造额度 | CI APK |
 | 日志页清空按钮 | `LogScreen` 调用 `GatewayRunner.clearLog` | CI APK |
 | 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 文案清理对话内容中的计费头、Claude/Codex 身份句、模板句、空模板参数；模型和工具参数保留 | `ClientFingerprintStripperTest`、CI APK |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |

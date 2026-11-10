@@ -32,7 +32,7 @@ fun TaskQuotaScreen(vms: ViewModels, onBack: () -> Unit) {
         TextButton(onClick = onBack) { Text("返回") }
         Text("任务与额度", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = AppStyle.TitleText)
         Text(
-            "查看供应商任务状态与额度；数据只来自供应商真实接口",
+            "签到、任务、额度一目了然",
             fontSize = 13.sp,
             color = AppStyle.SubtitleText,
             modifier = Modifier.padding(top = 5.dp, bottom = 14.dp),
@@ -40,16 +40,30 @@ fun TaskQuotaScreen(vms: ViewModels, onBack: () -> Unit) {
 
         GroupTitle("任务")
         SettingsGroup {
-            TaskRow("已配置账号", "$enabledAccounts 个", "用于执行任务的启用账号")
+            ActionRow(
+                label = "一键签到",
+                value = "未接入",
+                hint = "按供应商一键签到与领取任务",
+                onClick = { vms.toast("当前供应商均不支持签到或任务") },
+            )
             RowDivider()
-            TaskRow("签到任务", "未接入", "当前供应商插件未声明签到接口")
+            ActionRow(
+                label = "一键任务",
+                value = "未接入",
+                hint = "任务列表拉取失败时会显示真实错误，不伪造任务",
+                onClick = { vms.toast("当前供应商均不支持签到或任务") },
+            )
             RowDivider()
-            TaskRow("自动任务", "未接入", "当前供应商插件未声明任务接口")
+            TaskRow("任务列表", "没有可显示的任务", "$enabledAccounts 个账号待执行")
         }
 
         GroupTitle("额度")
         SettingsGroup {
-            TaskRow("供应商额度", "未提供", "额度接口需要由具体供应商适配器实现")
+            TaskRow("套餐额度", "未提供", "额度接口需要由具体供应商适配器实现")
+            RowDivider()
+            TaskRow("共享额度", "未提供", "上游未返回可解析额度")
+            RowDivider()
+            TaskRow("加购额度", "未提供", "额度包信息尚未查询")
             RowDivider()
             TaskRow("刷新时间", "—", "尚未获取供应商额度数据")
         }
@@ -58,7 +72,8 @@ fun TaskQuotaScreen(vms: ViewModels, onBack: () -> Unit) {
         SettingsGroup {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "网关统计中的请求数、token 用量和缓存命中率不等于供应商额度。本页不会把本地统计伪装成额度。",
+                    "按供应商一键签到与领取任务；当前供应商均不支持签到或任务。\n\n" +
+                        "网关统计中的请求数、token 用量和缓存命中率不等于供应商额度。本页不会把本地统计伪装成额度。",
                     fontSize = 13.sp,
                     color = AppStyle.SubtitleText,
                     lineHeight = 19.sp,
