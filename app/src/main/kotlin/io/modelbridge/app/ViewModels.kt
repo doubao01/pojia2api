@@ -373,7 +373,7 @@ class ViewModels(
         val providerId: String,
         val session: DeviceAuthSession? = null,
         val pending: Boolean = true,
-        val message: String = "正在准备登录…",
+        val message: String = "正在获取授权链接…",
         val finished: Boolean = false,
     )
 
@@ -407,7 +407,7 @@ class ViewModels(
                 _deviceLogin.value = DeviceLoginUiState(
                     providerId = providerId,
                     session = session,
-                    message = "请在下方页面完成登录，等待授权确认",
+                    message = "在下方页面确认授权，确认后自动完成登录",
                 )
                 val deadline = minOf(session.expiresAtMillis, System.currentTimeMillis() + 300_000)
                 while (kotlinx.coroutines.currentCoroutineContext().isActive &&
@@ -450,7 +450,7 @@ class ViewModels(
                 }
                 client.cancel(session)
                 _deviceLogin.value = _deviceLogin.value?.copy(
-                    pending = false, message = "授权超时，请重新开始", finished = true,
+                    pending = false, message = "授权超时，请重新发起登录", finished = true,
                 )
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
@@ -499,7 +499,7 @@ class ViewModels(
         val phone: String = "",
         val challenge: LoomySmsChallenge? = null,
         val busy: Boolean = false,
-        val message: String = "请输入手机号，点击发送验证码",
+        val message: String = "输入手机号获取验证码",
         val finished: Boolean = false,
     )
 
@@ -522,13 +522,13 @@ class ViewModels(
                     _loomyLogin.value = LoomyLoginUiState(
                         phone = challenge.phone,
                         challenge = challenge,
-                        message = "验证码已发送，请输入短信中的验证码",
+                        message = "验证码已发送",
                     )
                 }
                 .onFailure { error ->
                     _loomyLogin.value = LoomyLoginUiState(
                         phone = phone,
-                        message = error.message ?: "验证码发送失败",
+                        message = error.message ?: "验证码发送失败，请稍后重试",
                     )
                 }
         }
@@ -562,7 +562,7 @@ class ViewModels(
                     )
                 }
                 .onFailure { error ->
-                    _loomyLogin.value = state.copy(busy = false, message = error.message ?: "验证码错误")
+                    _loomyLogin.value = state.copy(busy = false, message = error.message ?: "验证码不正确，请检查后重试")
                 }
         }
     }

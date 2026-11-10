@@ -46,7 +46,7 @@ fun DeviceLoginDialog(
         text = {
             Column {
                 Text(
-                    state?.message ?: "正在准备登录…",
+                    state?.message ?: "正在获取授权链接…",
                     fontSize = 13.sp,
                     color = if (state?.finished == true) AppStyle.BodyText else AppStyle.SubtitleText,
                 )

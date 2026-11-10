@@ -38,6 +38,9 @@ class UiCopyContractTest {
         val homeLayout = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/HomeScreen.kt").readText()
         val models = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/ModelsScreen.kt").readText()
         val logs = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/LogScreen.kt").readText()
+        val viewModels = File(root, "app/src/main/kotlin/io/modelbridge/app/ViewModels.kt").readText()
+        val webLogin = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/WebLoginDialog.kt").readText()
+        val deviceLogin = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/DeviceLoginDialog.kt").readText()
         assertTrue(settings.contains("统计已重置"))
         assertTrue(settings.contains("已导入 "))
         assertTrue(homeLayout.contains("StatPairRow"))
@@ -50,6 +53,14 @@ class UiCopyContractTest {
         assertTrue(logs.contains("暂无日志"))
         assertTrue(models.contains("还没有可用模型"))
         assertTrue(models.contains("已登录但没有拉到模型，打开「日志」看具体原因"))
+        assertTrue(webLogin.contains("我已在网页登录完成"))
+        assertTrue(webLogin.contains("还没读到登录信息，请先在网页里完成登录"))
+        assertTrue(deviceLogin.contains("正在获取授权链接…"))
+        assertTrue(viewModels.contains("在下方页面确认授权，确认后自动完成登录"))
+        assertTrue(viewModels.contains("授权超时，请重新发起登录"))
+        assertTrue(viewModels.contains("输入手机号获取验证码"))
+        assertTrue(viewModels.contains("验证码已发送"))
+        assertTrue(viewModels.contains("验证码不正确，请检查后重试"))
     }
 
     private fun findProjectRoot(): File {

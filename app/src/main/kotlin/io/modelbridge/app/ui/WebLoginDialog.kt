@@ -138,12 +138,12 @@ fun WebLoginDialog(
                     CookieManager.getInstance().flush()
                     val raw = readCookiesFor(provider, currentUrl)
                     if (raw.isNullOrBlank()) {
-                        error = "还没读到 Cookie，请确认已登录成功再试"
+                        error = "还没读到登录信息，请先在网页里完成登录"
                     } else {
                         onCookie(raw)
                     }
                 },
-            ) { Text("我已登录完成") }
+            ) { Text("我已在网页登录完成") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消") }
