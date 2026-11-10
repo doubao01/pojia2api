@@ -5,8 +5,8 @@
 ## 最近验证
 
 - 本地 JVM 回归：core 84、providers 85，失败 0。
-- GitHub Actions：run #35—#51 均为 `内核测试 success`、`构建 APK success`；其中 #49/#50 为文档提交，#51（任务管理/账号管理页面拆分）地址 `https://github.com/doubao01/pojia2api/actions/runs/42837646422`。
-- 最近主分支提交：`49c4f61`。
+- GitHub Actions：run #35—#52 均为 `内核测试 success`、`构建 APK success`；其中 #49/#50/#52 为文档提交，#51（任务管理/账号管理页面拆分）地址 `https://github.com/doubao01/pojia2api/actions/runs/42837646422`。
+- 最近主分支提交：`63b0309`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
 ## 功能矩阵
