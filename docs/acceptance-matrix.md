@@ -4,9 +4,9 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 78、providers 83，失败 0。
-- GitHub Actions：run #35（到期前续期）、#36（任务/额度供应商协议）、#37（Loomy 任务积分）、#38（多供应商任务额度协议）、#39（验收文档）、#40（AStudio 积分）、#41（CI 验收记录）均为 `内核测试 success`、`构建 APK success`。
-- 最近主分支提交：`d66a0cb`。
+- 本地 JVM 回归：core 78、providers 85，失败 0。
+- GitHub Actions：run #35（到期前续期）、#36（任务/额度供应商协议）、#37（Loomy 任务积分）、#38（多供应商任务额度协议）、#39（验收文档）、#40（AStudio 积分）、#41（CI 验收记录）、#42（验收记录）均为 `内核测试 success`、`构建 APK success`。
+- 最近主分支提交：`e818724`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
 ## 功能矩阵
@@ -29,7 +29,8 @@
 | 连通性检测、端口扫描 | `ViewModels.checkAccount` 与本机端口扫描 | CI APK |
 | 首页统计、缓存命中率、token | `GatewayRunner` 使用真实上游 `Usage`，首页显示请求/成功率/耗时/缓存/token | core 测试 / CI APK |
 | 首页复制地址、管理入口 | 复制本机/局域网地址；账号、策略、任务/额度入口 | CI APK |
-| 任务/额度入口与页面 | `TaskQuotaScreen` 独立页面；按 3.10.0 文案显示一键签到、一键任务、任务列表、套餐/共享/加购额度；`AccountServiceRegistry` 已按静态契约接入 WorkBuddy 签到/成长任务/额度、Qoder 额度、Loomy 新人任务/积分、小浣熊/CatPaw 积分、Tabbit/Meoo/Trae 签到或额度、AStudio 积分，逐账号汇总成功/失败/跳过，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | 9 组账号业务测试共 29 项、3.9.3 反编译契约、CI APK；真实供应商接口未验证 |
+| 任务/额度入口与页面 | `TaskQuotaScreen` 独立页面；按 3.10.0 文案显示一键签到、一键任务、任务列表、套餐/共享/加购额度；`AccountServiceRegistry` 已按静态契约接入多家供应商，逐账号汇总成功/失败/跳过，未接入供应商显示真实错误；未返回额度时明确显示查询失败，不伪造数据 | 9 组账号业务测试共 29 项、3.9.3 反编译契约、CI APK；真实供应商接口未验证 |
+| 账号业务与逐账号积分/签到 | `providerGroups` 账号行按 CREDIT_REFRESH/CHECKIN 显示真实可用积分、额度详情、今日已签到/未签到，提供单账号「刷新积分」「签到」；本地签到状态按 Asia/Shanghai 自然日持久化 | `AccountDailyCheckinTest`（2 项）、账号业务测试、CI APK；真实服务端签到未验证 |
 | 日志页清空按钮 | `LogScreen` 调用 `GatewayRunner.clearLog` | CI APK |
 | 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 文案清理对话内容中的计费头、Claude/Codex 身份句、模板句、空模板参数；模型和工具参数保留 | `ClientFingerprintStripperTest`、CI APK |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |
@@ -44,7 +45,7 @@
 4. WebView、设备授权、悬浮球、开机广播、文件选择器和配置恢复仍需真机操作验收；CI 只证明编译和 JVM 行为。
 5. responses/messages 已实现基础请求转换、响应格式、策略注入和 SSE 基本事件；各厂商扩展字段尚未逐字段兼容。
 6. 设备授权续期协议已由脚本化 HTTP 夹具验证并接入本地运行时；真实 Qoder/WorkBuddy 服务端接受所保存账号的 refresh token、以及长期后台续期仍需真机与生产凭据验收。
-7. 原版 3.9.3/3.10.0 将「任务管理」与「账号管理」拆成两个页面：任务页只按 CHECKIN/TASKS 显示一键动作与任务列表，可用积分和当日签到状态在账号管理页逐账号显示。ModelBridge 目前仍把两类信息合并在 `TaskQuotaScreen`，功能数据已接真实协议，但页面结构尚未逐像素对齐。
+7. 原版 3.9.3/3.10.0 将「任务管理」与「账号管理」拆成两个页面：任务页只按 CHECKIN/TASKS 显示一键动作与任务列表，可用积分和当日签到状态在账号管理页逐账号显示。ModelBridge 的 `TaskQuotaScreen` 仍把两类信息合并，但供应商页账号行已补齐逐账号可用积分、额度详情、今日签到状态和单账号刷新/签到动作；独立页面结构与像素布局尚未对齐。
 
 ## 结论
 

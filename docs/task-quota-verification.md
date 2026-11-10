@@ -32,11 +32,13 @@
 
 - `AccountServicesTest` 8 项、`LoomyAccountServiceTest` 4 项、`BearerCreditServicesTest` 4 项、`TabbitAccountServiceTest` 4 项、`MeooAccountServiceTest` 3 项、`TraeAccountServiceTest` 4 项、`AStudioAccountServiceTest` 2 项：覆盖已接入供应商的请求头、路径、响应解析、签到与任务状态、失败隔离。
 - 未实现边界：AgentMore 的 `X-Sign` 依赖原 APK 固定盐值，不从反编译源码复制，因此未生成不可信签名请求；Dangbei 原版 `c(account)` 直接返回 `null`，保持明确不支持。
-- `./gradlew :core:test :providers:test --offline`：core 78、providers 83，失败 0。
+- `./gradlew :core:test :providers:test --offline`：core 78、providers 85，失败 0。
+- `AccountDailyCheckinTest` 2 项：按 Asia/Shanghai 自然日和账号 ID 生成签到键，验证同日幂等、跨日清除、账号隔离。
+- 供应商页账号行按 `CREDIT_REFRESH` / `CHECKIN` 能力展示真实可用积分、额度详情、今日已签到/未签到，并提供单账号「刷新积分」「签到」；签到状态持久化在 `DailyCheckinStore`，不把本地缓存冒充服务端记录。
 - CI 负责 Android `:app:assembleDebug` 编译与打包；JVM 测试不覆盖 Android UI 渲染。
 
 ## 边界
 
 - 3.9.3 为 JADX 反编译源码，部分方法存在寄存器/控制流还原警告；3.10.0 只提供 dex 字符串证据。请求与响应字段已按静态源码实现，但真实服务端是否接受请求、风控头、限频、幂等和额度单位仍需真机抓包验证。
-- 原版把「任务管理」和「账号管理」拆成两个页面；ModelBridge 目前仍合并成 `TaskQuotaScreen`，这是一处明确的结构差异，不能据此宣称页面 1:1 对齐。
+- 原版把「任务管理」和「账号管理」拆成两个页面；ModelBridge 目前仍合并成 `TaskQuotaScreen`，但供应商页账号行已补逐账号额度与签到状态，页面拆分和像素布局仍未对齐。
 - 未逐家实现的供应商在页面中显示不支持或查询失败；不会生成虚构额度。

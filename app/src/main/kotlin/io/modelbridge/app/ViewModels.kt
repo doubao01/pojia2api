@@ -179,6 +179,15 @@ class ViewModels(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    data class AccountCreditUiState(
+        val quota: AccountQuota? = null,
+        val checkedInToday: Boolean = false,
+        val busy: Boolean = false,
+    )
+
+    private val _accountCredits = MutableStateFlow<Map<String, AccountCreditUiState>>(emptyMap())
+    val accountCredits: StateFlow<Map<String, AccountCreditUiState>> = _accountCredits.asStateFlow()
+
     data class TaskQuotaUiState(
         val busy: Boolean = false,
         val quotas: Map<String, AccountQuota> = emptyMap(),
@@ -194,6 +203,79 @@ class ViewModels(
     init {
         refreshModels()
         refreshTaskQuota()
+        refreshAllAccountCredits()
+    }
+
+    private fun refreshAllAccountCredits() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val accounts = container.accountStore.all()
+            val snapshot = accounts.associate { account ->
+                account.id to AccountCreditUiState(
+                    checkedInToday = container.accountServices.supports(
+                        account.providerId,
+                        AccountCapability.CheckIn,
+                    ) && container.dailyCheckinStore.isCheckedIn(
+                        account.providerId,
+                        account.id,
+                        now,
+                    ),
+                )
+            }
+            _accountCredits.value = snapshot
+        }
+    }
+
+    fun supportsAccountCredit(providerId: String): Boolean =
+        container.accountServices.supports(providerId, AccountCapability.CreditRefresh)
+
+    fun supportsAccountCheckIn(providerId: String): Boolean =
+        container.accountServices.supports(providerId, AccountCapability.CheckIn)
+
+    /** 原版账号管理页的「刷新积分」：单账号请求真实额度，失败保留错误文案。 */
+    fun refreshAccountCredit(accountId: String) {
+        val previous = _accountCredits.value
+        val current = previous[accountId] ?: AccountCreditUiState()
+        if (current.busy) return
+        _accountCredits.value = previous + (accountId to current.copy(busy = true))
+        viewModelScope.launch(Dispatchers.IO) {
+            val account = container.accountStore.find(accountId)
+            val quota = account?.let { item -> container.accountServices.credit(item) }
+                ?: AccountQuota(error = "账号不存在")
+            val now = System.currentTimeMillis()
+            _accountCredits.value = _accountCredits.value + (accountId to AccountCreditUiState(
+                quota = quota,
+                checkedInToday = account != null &&
+                    container.accountServices.supports(account.providerId, AccountCapability.CheckIn) &&
+                    container.dailyCheckinStore.isCheckedIn(account.providerId, account.id, now),
+                busy = false,
+            ))
+        }
+    }
+
+    /** 原版账号管理页的单账号「签到」：成功后写入本地当日状态。 */
+    fun checkInAccount(accountId: String) {
+        val previous = _accountCredits.value
+        val current = previous[accountId] ?: AccountCreditUiState()
+        if (current.busy) return
+        _accountCredits.value = previous + (accountId to current.copy(busy = true))
+        viewModelScope.launch(Dispatchers.IO) {
+            val account = container.accountStore.find(accountId)
+            val result = account?.let { item -> container.accountServices.checkIn(item) }
+                ?: AccountActionResult(false, "账号不存在")
+            val now = System.currentTimeMillis()
+            if (result.ok && account != null && !result.unsupported) {
+                container.dailyCheckinStore.markCheckedIn(account.providerId, account.id, now)
+            }
+            _accountCredits.value = _accountCredits.value + (accountId to AccountCreditUiState(
+                quota = current.quota,
+                checkedInToday = account != null &&
+                    container.accountServices.supports(account.providerId, AccountCapability.CheckIn) &&
+                    container.dailyCheckinStore.isCheckedIn(account.providerId, account.id, now),
+                busy = false,
+            ))
+            toast(result.message)
+        }
     }
 
     /** 登录/导入账号后刷新一次任务与额度；无可用账号时明确提示。 */

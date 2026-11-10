@@ -14,6 +14,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,10 +44,13 @@ fun AccountsScreen(vms: ViewModels) {
     val groups by vms.providerGroups.collectAsState()
     val checks by vms.checks.collectAsState()
     val accounts by vms.accounts.collectAsState()
+    val credits by vms.accountCredits.collectAsState()
     val scanned by vms.scannedPorts.collectAsState()
     val scanning by vms.scanning.collectAsState()
     val context = LocalContext.current
     val transfer = remember { ConfigTransfer(context) }
+    val accountIds = accounts.map { it.id }
+    LaunchedEffect(accountIds) { accountIds.forEach { vms.refreshAccountCredit(it) } }
 
     var editing by remember { mutableStateOf<AccountEdit?>(null) }
     var webLogin by remember { mutableStateOf<AccountEdit?>(null) }
@@ -112,6 +116,7 @@ fun AccountsScreen(vms: ViewModels) {
                     vms = vms,
                     group = group,
                     checks = checks,
+                    credits = credits,
                     onAdd = { editing = AccountEdit(provider = group.provider) },
                     onEdit = { acc -> editing = AccountEdit(provider = group.provider, account = acc) },
                     onWebLogin = { webLogin = AccountEdit(provider = group.provider) },
@@ -185,6 +190,7 @@ private fun ProviderCard(
     vms: ViewModels,
     group: ProviderGroup,
     checks: Map<String, String>,
+    credits: Map<String, ViewModels.AccountCreditUiState>,
     onAdd: () -> Unit,
     onEdit: (Account) -> Unit,
     onWebLogin: () -> Unit,
@@ -243,6 +249,7 @@ private fun ProviderCard(
                     AccountRow(
                         account = acc,
                         checkResult = checks[acc.id],
+                        creditState = credits[acc.id],
                         onToggle = { vms.toggleAccount(acc.id, it) },
                         onCheck = { vms.checkAccount(acc) },
                         onEdit = { onEdit(acc) },
@@ -289,6 +296,7 @@ private fun ProviderCard(
 private fun AccountRow(
     account: Account,
     checkResult: String?,
+    creditState: ViewModels.AccountCreditUiState?,
     onToggle: (Boolean) -> Unit,
     onCheck: () -> Unit,
     onEdit: () -> Unit,
@@ -338,6 +346,45 @@ private fun AccountRow(
             }
         }
         val bound = policies.firstOrNull { it.id == account.fixedPolicyId }
+        val quota = creditState?.quota
+        val canRefreshCredit = vms.supportsAccountCredit(account.providerId)
+        val canCheckIn = vms.supportsAccountCheckIn(account.providerId)
+        if (canRefreshCredit || canCheckIn) {
+            Text(
+                text = buildList {
+                    add(
+                        when {
+                            creditState?.busy == true -> "可用积分：查询中…"
+                            quota?.known == true -> "可用积分：${quota.balance}"
+                            quota?.error?.isNotBlank() == true -> "可用积分：查询失败"
+                            else -> "可用积分：…"
+                        },
+                    )
+                    if (canCheckIn) {
+                        add(if (creditState?.checkedInToday == true) "今日已签到" else "今日未签到")
+                    }
+                    quota?.detail?.takeIf { it.isNotBlank() }?.let { add("额度：${it}") }
+                    quota?.error?.takeIf { it.isNotBlank() }?.let { add(it) }
+                }.joinToString(" · "),
+                fontSize = 11.sp,
+                color = AppStyle.SubtitleText,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                if (canRefreshCredit) {
+                    TextButton(
+                        enabled = creditState?.busy != true,
+                        onClick = { vms.refreshAccountCredit(account.id) },
+                    ) { Text("刷新积分", fontSize = 12.sp) }
+                }
+                if (canCheckIn) {
+                    TextButton(
+                        enabled = creditState?.busy != true,
+                        onClick = { vms.checkInAccount(account.id) },
+                    ) { Text("签到", fontSize = 12.sp) }
+                }
+            }
+        }
         if (account.fixedPolicyId != null) {
             Text(
                 "固定策略：${bound?.name ?: "已删除"}" + if (bound?.enabled == false) " · 已停用" else "",

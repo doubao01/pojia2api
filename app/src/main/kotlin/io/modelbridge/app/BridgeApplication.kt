@@ -2,6 +2,7 @@ package io.modelbridge.app
 
 import android.app.Application
 import io.modelbridge.app.prefs.AccountPreferences
+import io.modelbridge.app.prefs.DailyCheckinStore
 import io.modelbridge.app.prefs.PrefsPolicyStore
 import io.modelbridge.app.prefs.SettingsStore
 import io.modelbridge.core.AccountStore
@@ -109,6 +110,9 @@ class AppContainer(private val app: Application) {
 
     /** 账号仓储，持久化在 SharedPreferences，重启不丢。 */
     val accountStore = AccountPreferences(app)
+
+    /** 本地每日签到状态，按账号+自然日裁剪，不冒充服务端签到记录。 */
+    val dailyCheckinStore = DailyCheckinStore(app)
 
     /** 到期前刷新 OAuth 凭据，避免已保存账号到期后直接退出路由。 */
     val credentialRefresher = AccountCredentialRefresher(
