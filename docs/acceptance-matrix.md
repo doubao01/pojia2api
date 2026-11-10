@@ -4,9 +4,9 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 77、providers 46，失败 0。
-- GitHub Actions：run #24（多协议入口）、#25（首页说明）、#26（模型列表去重）、#27（关于页文案）均为 `内核测试 success`、`构建 APK success`。
-- 最近主分支提交：`0f3641c`。
+- 本地 JVM 回归：core 78、providers 54，失败 0。
+- GitHub Actions：run #33（Qoder 客户端标识）、#34（凭据有效期）均为 `内核测试 success`、`构建 APK success`。
+- 最近主分支提交：`931e877`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
 ## 功能矩阵
@@ -20,6 +20,7 @@
 | 悬浮球 | `FloatingBallService` 显示共享网关运行状态、支持权限引导、尺寸更新、拖动边界 | CI APK；真机权限与悬浮窗未验证 |
 | 导出/导入配置 | `ConfigTransfer` 处理设置、账号、策略；整包配置与账号文件解析分离 | core 测试 / CI APK |
 | 账号持久化与凭据序列化 | `AccountPreferences` 保存成功后发布；`Credential` 密封类序列化；`authExpiresAtMillis` 记录 Loomy/OAuth 到期时间，过期账号不参与模型目录和路由 | `AccountPersistenceTest`、`CredentialExpiryTest` |
+| 到期前刷新设备授权凭据 | `AccountCredentialRefresher` 将已保存账号映射回 Qoder/WorkBuddy 刷新协议，提前 5 分钟续期；轮换令牌、有效期和身份元数据原子写回；失败退避、并发编辑不覆盖；接进网关启动/周期维护、模型刷新与连通性检测，刷新后失效模型目录缓存 | `AccountCredentialRefresherTest`（8 项）、`CredentialRefreshCatalogTest`、CI APK；真实供应商刷新未验证 |
 | 策略库与策略注入 | `PolicyMatcher` / `PolicyInjector` / `PrefsPolicyStore` / `PolicyScreen`；固定绑定与自动匹配 | `PolicyTest`、`PolicyGatewayTest`、CI APK |
 | WebView Cookie 登录 | `WebLoginDialog` 读取 Cookie 并保存为 `Credential.Cookies` | CI APK；真实站点登录未验证 |
 | Qoder/CodeBuddy 设备授权 | `DeviceLoginDialog` + `QoderDeviceAuth` / `WorkBuddyDeviceAuth` 轮询、取消、OAuth 元数据保存 | 41 个设备授权契约测试、CI APK；真实授权未验证 |
@@ -42,6 +43,7 @@
 3. 3.10.0 真机逐屏视觉核对尚未完成。现有 3.10.0 证据来自 dex 字符串与 3.9.3 反编译源码，不能替代像素/交互验收。
 4. WebView、设备授权、悬浮球、开机广播、文件选择器和配置恢复仍需真机操作验收；CI 只证明编译和 JVM 行为。
 5. responses/messages 已实现基础请求转换、响应格式、策略注入和 SSE 基本事件；各厂商扩展字段尚未逐字段兼容。
+6. 设备授权续期协议已由脚本化 HTTP 夹具验证并接入本地运行时；真实 Qoder/WorkBuddy 服务端接受所保存账号的 refresh token、以及长期后台续期仍需真机与生产凭据验收。
 
 ## 结论
 

@@ -180,12 +180,13 @@ class ViewModels(
 
     // ---------- 模型 ----------
 
-    /** 拉取一次模型目录。 */
+    /** 拉取一次模型目录；同时触发共享 runner 的凭据维护与目录重拉。 */
     fun refreshModels() {
         _loadingModels.value = true
         _modelsError.value = null
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { container.gateway.refreshCatalog() }
+            runCatching { container.credentialRefresher.refreshDue() }
+            runCatching { container.gateway.refreshCatalog(force = true) }
                 .onSuccess { result ->
                     _models.value = result.models
                     if (result.errors.isNotEmpty()) {
@@ -554,12 +555,14 @@ class ViewModels(
     fun checkAccount(account: Account) {
         _checks.value = _checks.value + (account.id to "检测中…")
         viewModelScope.launch(Dispatchers.IO) {
-            val provider = registry.find(account.providerId)
+            container.credentialRefresher.refreshAccount(account.id, ignoreBackoff = true)
+            val current = container.accountStore.find(account.id) ?: account
+            val provider = registry.find(current.providerId)
             val result = if (provider == null) {
                 "供应商未找到"
             } else {
                 runCatching {
-                    provider.validate(contextFor(provider, account))
+                    provider.validate(contextFor(provider, current))
                 }.fold(
                     onSuccess = { r ->
                         when (r) {

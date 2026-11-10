@@ -4,11 +4,13 @@ import io.modelbridge.app.prefs.GatewaySettings
 import io.modelbridge.app.prefs.SettingsStore
 import io.modelbridge.core.Gateway
 import io.modelbridge.core.http.HttpServer
+import io.modelbridge.providers.auth.CredentialRefreshSummary
 import io.modelbridge.spi.Usage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,11 @@ class GatewayRunner(
     private val gatewayProvider: () -> Gateway,
     private val settings: SettingsStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    /** 每次重拉模型目录前刷新即将到期的 OAuth 凭据。 */
+    private val beforeCatalogRefresh: suspend () -> CredentialRefreshSummary = {
+        CredentialRefreshSummary()
+    },
+    private val maintenanceIntervalMillis: Long = 5 * 60 * 1000L,
 ) {
     /** 运行状态。 */
     private val _running = MutableStateFlow(false)
@@ -62,6 +69,7 @@ class GatewayRunner(
 
     private var server: HttpServer? = null
     private var refreshJob: Job? = null
+    private var maintenanceJob: Job? = null
 
     /**
      * 启动网关。
@@ -123,8 +131,17 @@ class GatewayRunner(
             _running.value = true
 
             // 刷一次模型目录，避免首次请求空转
-            refreshJob = scope.launch {
-                runCatching { gatewayProvider().refreshCatalog() }
+            refreshJob = scope.launch { runCatching { refreshCatalogInternal(force = true) } }
+
+            // 网关常驻时定期维护账号凭据，避免长期挂机后 OAuth 到期失效。
+            maintenanceJob = scope.launch {
+                while (true) {
+                    delay(maintenanceIntervalMillis)
+                    runCatching { refreshCatalogInternal(force = false) }
+                        .onFailure { error ->
+                            if (error is kotlinx.coroutines.CancellationException) throw error
+                        }
+                }
             }
             _port.value
         } catch (e: Exception) {
@@ -149,6 +166,8 @@ class GatewayRunner(
         server = null
         refreshJob?.cancel()
         refreshJob = null
+        maintenanceJob?.cancel()
+        maintenanceJob = null
         _running.value = false
         _port.value = 0
     }
@@ -163,7 +182,22 @@ class GatewayRunner(
 
     /** 手动刷新一次模型目录。 */
     fun refreshCatalog() = scope.launch {
-        runCatching { gatewayProvider().refreshCatalog() }
+        runCatching { refreshCatalogInternal(force = true) }
+    }
+
+    /**
+     * 刷新凭据后重拉模型目录。
+     *
+     * 供应商模型列表缓存按账号缓存；只改凭据不失效缓存，
+     * 仍会把旧令牌拉取的模型暴露到刷新后的目录里。
+     */
+    private suspend fun refreshCatalogInternal(force: Boolean) {
+        val summary = runCatching { beforeCatalogRefresh() }
+            .getOrElse { error ->
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                CredentialRefreshSummary()
+            }
+        gatewayProvider().refreshCatalog(force = force || summary.updated > 0)
     }
 
     /**

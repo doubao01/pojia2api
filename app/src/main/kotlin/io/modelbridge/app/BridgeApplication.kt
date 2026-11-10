@@ -13,8 +13,13 @@ import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.core.Router
 import io.modelbridge.core.http.JvmHttpClient
 import io.modelbridge.providers.BuiltInProviders
+import io.modelbridge.providers.auth.AccountCredentialRefresher
+import io.modelbridge.providers.auth.DeviceAuthClient
 import io.modelbridge.providers.auth.LoomySigningMaterial
 import io.modelbridge.providers.auth.LoomySmsAuth
+import io.modelbridge.providers.auth.QoderClientIds
+import io.modelbridge.providers.auth.QoderDeviceAuth
+import io.modelbridge.providers.auth.WorkBuddyDeviceAuth
 import io.modelbridge.spi.HttpClient
 import io.modelbridge.spi.Provider
 import io.modelbridge.spi.ProviderContext
@@ -80,8 +85,26 @@ class AppContainer(private val app: Application) {
     /** 设置，持久化在 SharedPreferences。 */
     val settings = SettingsStore(app)
 
+    /** 设备授权刷新客户端；公开构建没有 Qoder 客户端标识时仍保留 WorkBuddy 刷新。 */
+    val deviceAuthClients: Map<String, DeviceAuthClient> = buildMap {
+        put("codebuddy", WorkBuddyDeviceAuth(httpClient))
+        val ids = QoderClientIds(
+            cn = BuildConfig.QODER_CLIENT_ID_CN,
+            global = BuildConfig.QODER_CLIENT_ID_GLOBAL,
+        )
+        if (ids.cn.isNotBlank() || ids.global.isNotBlank()) {
+            put("qoder", QoderDeviceAuth(httpClient, ids))
+        }
+    }
+
     /** 账号仓储，持久化在 SharedPreferences，重启不丢。 */
     val accountStore = AccountPreferences(app)
+
+    /** 到期前刷新 OAuth 凭据，避免已保存账号到期后直接退出路由。 */
+    val credentialRefresher = AccountCredentialRefresher(
+        accounts = accountStore,
+        clients = deviceAuthClients,
+    )
 
     /** 策略仓储，持久化在 SharedPreferences，重启不丢。 */
     val policyStore = PrefsPolicyStore(app)
@@ -151,7 +174,11 @@ class AppContainer(private val app: Application) {
      * 不能让 Activity 和 Service 各创建一个监听器，否则首页永远看不到服务状态。
      */
     val runner: GatewayRunner by lazy {
-        GatewayRunner(gatewayProvider = { gateway }, settings = settings).also {
+        GatewayRunner(
+            gatewayProvider = { gateway },
+            settings = settings,
+            beforeCatalogRefresh = { credentialRefresher.refreshDue() },
+        ).also {
             onUsage = it::reportUsage
         }
     }

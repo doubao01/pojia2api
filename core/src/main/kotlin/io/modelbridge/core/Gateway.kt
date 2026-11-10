@@ -20,6 +20,8 @@ import io.modelbridge.spi.Usage
 import io.modelbridge.spi.ProviderContext
 import io.modelbridge.spi.ProviderException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
@@ -114,6 +116,7 @@ class Gateway(
     /** 上次目录刷新时间，0 表示从未刷新。 */
     @Volatile
     private var lastRefreshAt: Long = 0L
+    private val catalogMutex = Mutex()
 
     /** 处理一个 HTTP 请求，返回响应。 */
     suspend fun handle(request: ServerRequest): HttpResult {
@@ -145,12 +148,13 @@ class Gateway(
         }
     }
 
-    /** 定时刷新模型目录。调用方负责按需触发。 */
-    suspend fun refreshCatalog(): ModelCatalogResult {
+    /** 定时刷新模型目录。调用方负责按需触发。force 为 true 时先清空账号目录缓存。 */
+    suspend fun refreshCatalog(force: Boolean = false): ModelCatalogResult = catalogMutex.withLock {
+        if (force) catalog.invalidateCache()
         val result = catalog.build(contextFactory)
         router.updateCatalog(result.models)
         lastRefreshAt = clock()
-        return result
+        result
     }
 
     /** 目录为空或过期时按需刷新。 */
