@@ -261,6 +261,14 @@ private fun AccountDetails(
             color = AppStyle.SubtitleText,
             modifier = Modifier.padding(top = 3.dp),
         )
+        } else {
+            Text(
+                AccountStatusFormat.tokenLabel(account.authExpiresAtMillis, System.currentTimeMillis()),
+                fontSize = 11.sp,
+                color = AppStyle.SubtitleText,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             if (canCredit) {
                 TextButton(
