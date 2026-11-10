@@ -110,6 +110,11 @@ class UiCopyContractTest {
         assertTrue(homeLayout.contains("LanAddresses.pick"))
         assertTrue(homeLayout.contains("仅本机可访问"))
         assertTrue(homeLayout.contains("未检测到局域网地址"))
+        val runnerSource = File(root, "app/src/main/kotlin/io/modelbridge/app/GatewayRunner.kt").readText()
+        assertTrue(runnerSource.contains("GatewayCounters"))
+        assertTrue(runnerSource.contains("counters.reset()"))
+        assertTrue(runnerSource.contains("counters.record("))
+        assertTrue(homeLayout.contains("vms.runner.stats.collectAsState()"))
     }
 
     private fun findProjectRoot(): File {

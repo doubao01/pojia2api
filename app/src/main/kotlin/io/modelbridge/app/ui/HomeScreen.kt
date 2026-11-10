@@ -52,18 +52,17 @@ fun HomeScreen(
 ) {
     val running by vms.runner.running.collectAsState()
     val port by vms.runner.port.collectAsState()
-    val entries by vms.runner.log.collectAsState()
+    val stats = vms.runner.stats.collectAsState()
     val models by vms.models.collectAsState()
     val settings by vms.settings.collectAsState()
     val accessKey = settings.accessKey
 
-    val total = entries.size
-    val ok = entries.count { it.status in 200..299 }
-    val fail = entries.count { it.status >= 400 }
-    val successRate = if (total > 0) ok * 100.0 / total else 0.0
-    val avgCost = entries.filter { it.costMillis > 0 }
-        .let { list -> if (list.isEmpty()) 0L else list.sumOf { it.costMillis } / list.size }
-    val hitRate = vms.runner.cacheHitRate()
+    val total = stats.value.total
+    val ok = stats.value.success
+    val fail = stats.value.failed
+    val successRate = stats.value.successRate
+    val avgCost = stats.value.averageCostMillis
+    val hitRate = stats.value.cacheHitRate
     val (tokenIn, tokenOut) = vms.runner.tokenTotals()
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -162,8 +161,8 @@ private fun StatusCard(
     running: Boolean,
     port: Int,
     models: Int,
-    success: Int,
-    failed: Int,
+    success: Long,
+    failed: Long,
     onToggle: () -> Unit,
 ) {
     Card(

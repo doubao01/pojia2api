@@ -2,6 +2,7 @@ package io.modelbridge.app
 
 import io.modelbridge.app.prefs.GatewaySettings
 import io.modelbridge.app.prefs.SettingsStore
+import io.modelbridge.core.GatewayCounters
 import io.modelbridge.core.Gateway
 import io.modelbridge.core.http.HttpServer
 import io.modelbridge.providers.auth.CredentialRefreshSummary
@@ -66,6 +67,10 @@ class GatewayRunner(
 
     private val _log = MutableStateFlow<List<LogEntry>>(emptyList())
     val log: StateFlow<List<LogEntry>> = _log.asStateFlow()
+    private val counters = GatewayCounters()
+    private val _stats = MutableStateFlow(counters.snapshot())
+    /** 独立累计统计，不受日志上限裁剪影响。 */
+    val stats: StateFlow<GatewayCounters.Snapshot> = _stats.asStateFlow()
 
     private var server: HttpServer? = null
     private var refreshJob: Job? = null
@@ -179,13 +184,17 @@ class GatewayRunner(
         _port.value = 0
     }
 
-    /** 清空日志（原版日志页的「清空」）。 */
+    /** 清空日志（原版日志页的「清空」）；累计统计保留。 */
     fun clearLog() {
         _log.value = emptyList()
     }
 
-    /** 重置统计：日志与计数一起清掉。 */
-    fun resetStats() = clearLog()
+    /** 重置统计：累计请求/耗时/token 与日志一起清掉。 */
+    fun resetStats() {
+        counters.reset()
+        _stats.value = counters.snapshot()
+        clearLog()
+    }
 
     /** 手动刷新一次模型目录。 */
     fun refreshCatalog() = scope.launch {
@@ -207,26 +216,16 @@ class GatewayRunner(
         gatewayProvider().refreshCatalog(force = force || summary.updated > 0)
     }
 
-    /**
-     * 缓存命中率。
-     *
-     * 内核目前没有暴露缓存统计，这里用「成功请求中未产生上游错误的占比」
-     * 作为近似值；缺少数据时返回 null，界面显示「—」而不是编造数字。
-     */
-    fun cacheHitRate(): Double? {
-        // 用上游返回的真实用量算，而不是靠响应耗时猜
-        val entries = _log.value.filter { it.promptTokens > 0 }
-        if (entries.isEmpty()) return null
-        val cached = entries.sumOf { it.cachedTokens }
-        val prompt = entries.sumOf { it.promptTokens }
-        return if (prompt > 0) cached * 100.0 / prompt else null
-    }
+    /** 缓存命中率：按累计上游用量计算；没有用量数据时返回 null。 */
+    fun cacheHitRate(): Double? = counters.snapshot().cacheHitRate
 
     /** 累计 token 用量，供首页统计展示。 */
-    fun tokenTotals(): Pair<Int, Int> {
-        val entries = _log.value
-        return entries.sumOf { it.promptTokens } to entries.sumOf { it.completionTokens }
+    fun tokenTotals(): Pair<Long, Long> = counters.snapshot().let {
+        it.promptTokens to it.completionTokens
     }
+
+    /** 累计统计快照，供首页一次性读取，避免多次计算。 */
+    fun statsSnapshot(): GatewayCounters.Snapshot = _stats.value
 
     private fun statusOf(result: io.modelbridge.core.http.HttpResult): Int = when (result) {
         is io.modelbridge.core.http.HttpResult.Buffered -> result.status
@@ -246,6 +245,14 @@ class GatewayRunner(
                 cachedTokens = it.cachedTokens,
             )
         } ?: entry
+        counters.record(
+            status = filled.status,
+            costMillis = filled.costMillis,
+            promptTokens = filled.promptTokens,
+            completionTokens = filled.completionTokens,
+            cachedTokens = filled.cachedTokens,
+        )
+        _stats.value = counters.snapshot()
         _log.value = (current + filled).takeLast(limit)
     }
 }
