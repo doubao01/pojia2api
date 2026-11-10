@@ -42,9 +42,15 @@ data class Account(
     val authNickname: String = "",
     /** 令牌类型，默认 Bearer。 */
     val authTokenKind: String = "Bearer",
+    /** 凭据到期时间（毫秒）；0 表示未知或永不过期。 */
+    val authExpiresAtMillis: Long = 0,
     /** 固定绑定策略；null 按模型自动匹配，停用或已删除的策略不注入。 */
     val fixedPolicyId: String? = null,
 ) {
+    /** 凭据是否已过期；0 表示未知或永不过期。 */
+    fun isExpired(nowMillis: Long): Boolean =
+        authExpiresAtMillis > 0 && nowMillis >= authExpiresAtMillis
+
     init {
         require(id.isNotBlank()) { "账号 id 不能为空" }
         require(providerId.isNotBlank()) { "providerId 不能为空" }
@@ -116,6 +122,7 @@ class ModelCatalog(
     private val registry: ProviderRegistry,
     private val accounts: AccountStore,
     private val cache: Cache<String, List<ModelInfo>> = Cache.create(),
+    private val clockMillis: () -> Long = System::currentTimeMillis,
 ) {
     /**
      * 构建当前可见的模型列表。
@@ -129,8 +136,9 @@ class ModelCatalog(
         val errors = mutableListOf<CatalogError>()
 
         for (provider in registry.all()) {
+            val now = clockMillis()
             val enabledAccounts = accounts.byProvider(provider.id)
-                .filter { it.enabled }
+                .filter { it.enabled && !it.isExpired(now) }
                 .sortedBy { it.priority }
 
             if (enabledAccounts.isEmpty()) {

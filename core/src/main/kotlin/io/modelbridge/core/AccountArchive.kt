@@ -95,6 +95,11 @@ object AccountArchive {
         val tenant = merged.string("enterpriseId", "enterprise_id", "entId", "tenantId", "tenant_id")
         val tokenKind = merged.string("tokenKind", "token_type", "tokenType")
             .ifBlank { credential.tokenTypeOrEmpty() }
+        val expiresAtMillis = expiryMillis(merged)
+            .takeIf { it > 0 }
+            ?: merged.long("authExpiresAtMillis").takeIf { it > 0 }
+            ?: (credential as? Credential.OAuth)?.expiresAtMillis
+            ?: 0L
 
         return Account(
             id = uid.ifBlank { "$providerId-${UUID.randomUUID().toString().take(8)}" },
@@ -111,6 +116,7 @@ object AccountArchive {
             authDomain = domain,
             authNickname = nickname,
             authTokenKind = tokenKind,
+            authExpiresAtMillis = expiresAtMillis,
             fixedPolicyId = obj.string("fixedPolicyId").takeIf { it.isNotBlank() },
         )
     }
@@ -156,6 +162,10 @@ object AccountArchive {
         fields["enterpriseId"] = JsonPrimitive(account.authTenantId)
         fields["nickname"] = JsonPrimitive(account.authNickname.ifBlank { account.label })
         fields["tokenKind"] = JsonPrimitive(account.authTokenKind)
+        if (account.authExpiresAtMillis > 0) {
+            fields["expiresAtMillis"] = JsonPrimitive(account.authExpiresAtMillis)
+            fields["expiresAt"] = JsonPrimitive(account.authExpiresAtMillis / 1000L)
+        }
         return JsonObject(fields)
     }
 

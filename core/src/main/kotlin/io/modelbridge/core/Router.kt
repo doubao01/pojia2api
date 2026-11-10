@@ -82,6 +82,7 @@ class Router(
     private val health: HealthTracker = HealthTracker(),
     /** 模型目录快照，由 [ModelCatalog] 定期刷新。 */
     private var catalog: List<ModelInfo> = emptyList(),
+    private val clockMillis: () -> Long = System::currentTimeMillis,
 ) {
     private val mutex = Mutex()
 
@@ -109,8 +110,13 @@ class Router(
         val targets = mutableListOf<RouteTarget>()
         for (model in matched) {
             val provider = registry.find(model.providerId) ?: continue
+            val now = clockMillis()
             val candidates = accounts.byProvider(provider.id)
-                .filter { it.enabled && model.id !in it.disabledModels }
+                .filter {
+                    it.enabled &&
+                        !it.isExpired(now) &&
+                        model.id !in it.disabledModels
+                }
                 .sortedBy { it.priority }
 
             for (account in candidates) {

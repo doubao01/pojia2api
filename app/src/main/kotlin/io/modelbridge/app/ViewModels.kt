@@ -306,6 +306,7 @@ class ViewModels(
             authDomain = credentials.domain,
             authNickname = credentials.nickname,
             authTokenKind = credentials.tokenKind.ifBlank { credentials.credential.tokenType },
+            authExpiresAtMillis = credentials.credential.expiresAtMillis,
         )
     }
 
@@ -383,6 +384,7 @@ class ViewModels(
                         authUid = session.userId,
                         authNickname = session.userId,
                         authTokenKind = "Session",
+                        authExpiresAtMillis = session.expiresAtMillis,
                     )
                     _loomyLogin.value = state.copy(
                         busy = false,
@@ -490,6 +492,7 @@ class ViewModels(
         authDomain: String = "",
         authNickname: String = "",
         authTokenKind: String = "Bearer",
+        authExpiresAtMillis: Long = 0,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             val existing = id?.let { container.accountStore.find(it) }
@@ -508,6 +511,11 @@ class ViewModels(
                 authDomain = authDomain.ifBlank { existing?.authDomain ?: "" },
                 authNickname = authNickname.ifBlank { existing?.authNickname ?: "" },
                 authTokenKind = authTokenKind.ifBlank { existing?.authTokenKind ?: "Bearer" },
+                authExpiresAtMillis = if (authExpiresAtMillis > 0) {
+                    authExpiresAtMillis
+                } else {
+                    existing?.authExpiresAtMillis ?: 0
+                },
                 fixedPolicyId = existing?.fixedPolicyId,
             )
             container.accountStore.upsert(account)

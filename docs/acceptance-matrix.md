@@ -4,7 +4,7 @@
 
 ## 最近验证
 
-- 本地 JVM 回归：core 73、providers 46，失败 0。
+- 本地 JVM 回归：core 77、providers 46，失败 0。
 - GitHub Actions：run #24（多协议入口）、#25（首页说明）、#26（模型列表去重）、#27（关于页文案）均为 `内核测试 success`、`构建 APK success`。
 - 最近主分支提交：`0f3641c`。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
@@ -19,11 +19,11 @@
 | 开机自启 | `BootReceiver` 与 manifest 广播 | CI APK；真机开机广播未验证 |
 | 悬浮球 | `FloatingBallService` 显示共享网关运行状态、支持权限引导、尺寸更新、拖动边界 | CI APK；真机权限与悬浮窗未验证 |
 | 导出/导入配置 | `ConfigTransfer` 处理设置、账号、策略；整包配置与账号文件解析分离 | core 测试 / CI APK |
-| 账号持久化与凭据序列化 | `AccountPreferences` 保存成功后发布；`Credential` 密封类序列化 | `AccountPersistenceTest` |
+| 账号持久化与凭据序列化 | `AccountPreferences` 保存成功后发布；`Credential` 密封类序列化；`authExpiresAtMillis` 记录 Loomy/OAuth 到期时间，过期账号不参与模型目录和路由 | `AccountPersistenceTest`、`CredentialExpiryTest` |
 | 策略库与策略注入 | `PolicyMatcher` / `PolicyInjector` / `PrefsPolicyStore` / `PolicyScreen`；固定绑定与自动匹配 | `PolicyTest`、`PolicyGatewayTest`、CI APK |
 | WebView Cookie 登录 | `WebLoginDialog` 读取 Cookie 并保存为 `Credential.Cookies` | CI APK；真实站点登录未验证 |
 | Qoder/CodeBuddy 设备授权 | `DeviceLoginDialog` + `QoderDeviceAuth` / `WorkBuddyDeviceAuth` 轮询、取消、OAuth 元数据保存 | 41 个设备授权契约测试、CI APK；真实授权未验证 |
-| Loomy 手机验证码 | `LoomySmsAuth` 两步 sendCode/checkCode 与 `LoomySmsDialog`；签名材料显式注入 | 5 个协议测试、CI APK；生产签名材料未注入 |
+| Loomy 手机验证码 | `LoomySmsAuth` 两步 sendCode/checkCode 与 `LoomySmsDialog`；签名材料显式注入；登录成功保存 14 天会话有效期 | 5 个协议测试、`CredentialExpiryTest`、CI APK；生产签名材料未注入 |
 | 手动添加、导入/导出账号 | `AccountEditDialog` 与 `AccountArchive`；兼容原版数组、WorkBuddy 单对象、secret 对象/字符串 | `AccountArchiveTest`、CI APK；用户已确认修正版导入文件不再报错 |
 | 连通性检测、端口扫描 | `ViewModels.checkAccount` 与本机端口扫描 | CI APK |
 | 首页统计、缓存命中率、token | `GatewayRunner` 使用真实上游 `Usage`，首页显示请求/成功率/耗时/缓存/token | core 测试 / CI APK |
