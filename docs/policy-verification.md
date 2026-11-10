@@ -39,14 +39,15 @@
 - `PolicyGatewayTest` 使用回环 HTTP 服务确认 chat 路径返回实际响应，检查上游接收到策略及客户端消息；也验证固定绑定和故障转移。
 - 设备授权测试覆盖 Qoder 21 个、WorkBuddy 20 个契约用例；Loomy SMS 协议新增 5 个用例。
 - `AccountArchiveTest` 覆盖 3.10.0 WorkBuddy 单对象 `{account,auth}`、原版账号数组 `provider/uid/nickname/secret`、原生 Account 往返和损坏文件。
-- 最近一次 JVM 回归：core 59、providers 46，失败 0。
+- `ClientFingerprintStripperTest` 覆盖去指纹开关关闭 / 开启、内容块数组、解析失败回退；清理范围按 3.10.0 dex 文案限为对话内容里的计费头、Claude Code / Codex 身份句、模板句、空模板参数。
+- 最近一次 JVM 回归：core 63、providers 46，失败 0。
 - GitHub Actions run #20（提交 `45ad59c`）：内核测试 success，Debug APK 构建 success。
 - 回环测试使用受控测试供应商，不验证任意真实外部供应商或登录协议。
 - Android 界面、文件选择器、悬浮球权限、开机广播、进程重启和保存失败恢复仍需要 Android 仪器测试/真机验收，不能以 CI 编译替代。
 
 ## 当前已接入的应用功能
 
-- 设置页：端口、局域网监听、访问密钥、失败阈值、冷却、重试、请求超时、日志上限、开机自启、悬浮球、配置导入导出、重置统计、关于。
+- 设置页：端口、局域网监听、访问密钥、失败阈值、冷却、重试、请求超时、日志上限、开机自启、悬浮球、去掉客户端指纹（请求正文清洗）、配置导入导出、重置统计、关于。
 - 供应商页：WebView Cookie 登录、Qoder/CodeBuddy 设备授权 WebView 与轮询、Loomy 两步短信 UI/协议、OAuth/手动添加、账号导入导出（兼容原版账号数组与 WorkBuddy 单对象）、连通性检测、本机端口扫描。
 - 首页：运行状态、复制地址、访问密钥、请求/成功率/耗时/模型/缓存/token 统计、账号/策略/任务额度入口。
 - 日志页：清空日志。
