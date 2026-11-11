@@ -253,7 +253,7 @@ private fun AccountDetails(
                     add(if (credit?.checkedInToday == true) "今日已签到" else "今日未签到")
                 }
                 if (!canCredit && !canCheckIn) add("未接入积分或签到")
-                check?.let { add(it) }
+                add(check ?: io.modelbridge.core.AccountCheckStatus.UNKNOWN)
                 quota?.detail?.takeIf { it.isNotBlank() }?.let { add("额度：$it") }
                 quota?.error?.takeIf { it.isNotBlank() }?.let { add(it) }
             }.joinToString(" · "),

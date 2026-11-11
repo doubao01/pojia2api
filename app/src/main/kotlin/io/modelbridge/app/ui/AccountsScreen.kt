@@ -463,7 +463,7 @@ private fun AccountRow(
                             System.currentTimeMillis(),
                         ).takeIf { it.isNotBlank() }?.let { append(" · $it") }
                         if (account.baseUrl.isNotBlank()) append(" · ${account.baseUrl}")
-                        checkResult?.let { append(" · $it") }
+                        append(" · ").append(checkResult ?: AccountCheckStatus.UNKNOWN)
                     },
                     fontSize = 11.sp,
                     color = when {
