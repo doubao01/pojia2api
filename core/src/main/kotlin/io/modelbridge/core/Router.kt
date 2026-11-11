@@ -95,6 +95,11 @@ class Router(
 ) {
     private val mutex = Mutex()
 
+    /** 最近一次是否因全部账号冷却而强制尝试，供日志展示。 */
+    @Volatile
+    var lastForcedAttempt: String? = null
+        private set
+
     /** 更新模型目录快照。 */
     suspend fun updateCatalog(models: List<ModelInfo>) = mutex.withLock {
         catalog = models
@@ -136,11 +141,30 @@ class Router(
         }
 
         if (targets.isEmpty()) {
-            // 区分「模型不存在」与「模型存在但账号都在冷却」
-            val cooldown = matched.any { m ->
+            // 3.10.0 `p007h/s.java`：全部账号处于冷却时仍强制尝试一次，
+            // 避免冷却期间完全不可用；只有确实没有启用账号才报 404。
+            val fallback = mutableListOf<RouteTarget>()
+            val now = clockMillis()
+            for (model in matched) {
+                val provider = registry.find(model.providerId) ?: continue
+                accounts.byProvider(provider.id)
+                    .filter {
+                        it.enabled &&
+                            !it.isExpired(now) &&
+                            model.id !in it.disabledModels
+                    }
+                    .sortedBy { it.priority }
+                    .firstOrNull()
+                    ?.let { fallback += RouteTarget(provider, it, model) }
+            }
+            if (fallback.isNotEmpty()) {
+                lastForcedAttempt = "全部账号处于冷却，本次强制尝试一次"
+                return fallback
+            }
+            val hasEnabledAccount = matched.any { m ->
                 accounts.byProvider(m.providerId).any { it.enabled }
             }
-            throw if (cooldown) {
+            throw if (hasEnabledAccount) {
                 GatewayError.UpstreamUnavailable(
                     message = "模型 $modelId 的账号暂不可用（全部失败或冷却中）",
                     retryAfterSeconds = 30,

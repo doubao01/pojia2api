@@ -333,8 +333,12 @@ private fun AccountDetails(
                     onClick = { vms.checkInAccount(account.id) },
                 ) { Text("签到", fontSize = 12.sp) }
             }
-            TextButton(onClick = { vms.refreshAccountCredential(account.id) }) {
-                Text("刷新凭证", fontSize = 12.sp)
+            val refreshing = account.id in vms.refreshingCredentials.collectAsState().value
+            TextButton(
+                enabled = !refreshing,
+                onClick = { vms.refreshAccountCredential(account.id) },
+            ) {
+                Text(if (refreshing) "正在刷新凭证…" else "刷新凭证", fontSize = 12.sp)
             }
             TextButton(onClick = { vms.toggleAccount(account.id, !account.enabled) }) {
                 Text(if (account.enabled) "禁用" else "启用", fontSize = 12.sp)

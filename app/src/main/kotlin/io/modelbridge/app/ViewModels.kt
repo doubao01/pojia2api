@@ -189,6 +189,10 @@ class ViewModels(
     private val _checks = MutableStateFlow<Map<String, String>>(emptyMap())
     val checks: StateFlow<Map<String, String>> = _checks.asStateFlow()
 
+    /** 正在刷新凭证的账号 id 集合；原版按钮显示「正在刷新凭证…」。 */
+    private val _refreshingCredentials = MutableStateFlow<Set<String>>(emptySet())
+    val refreshingCredentials: StateFlow<Set<String>> = _refreshingCredentials.asStateFlow()
+
     /** 账号冷却剩余毫秒数，按账号 id 索引；原版显示「冷却中（N 分钟）」。 */
     private val _cooldowns = MutableStateFlow<Map<String, Long>>(emptyMap())
     val cooldowns: StateFlow<Map<String, Long>> = _cooldowns.asStateFlow()
@@ -270,37 +274,47 @@ class ViewModels(
 
     /** 原版账号管理页的「刷新凭证」：按账号立即尝试续期，结果如实提示。 */
     fun refreshAccountCredential(accountId: String) {
+        if (accountId in _refreshingCredentials.value) return
+        _refreshingCredentials.value = _refreshingCredentials.value + accountId
         viewModelScope.launch(Dispatchers.IO) {
-            val account = container.accountStore.find(accountId)
-            if (account == null) {
-                toast("账号不存在")
-                return@launch
+            try {
+                refreshCredentialInternal(accountId)
+            } finally {
+                _refreshingCredentials.value = _refreshingCredentials.value - accountId
             }
-            val outcome = runCatching {
-                container.credentialRefresher.refreshAccount(accountId, ignoreBackoff = true)
-            }
-            val label = account.label.ifBlank { account.id }
-            outcome.exceptionOrNull()?.let { error ->
-                // 3.10.0 `C/C0008h.java`：「昵称 凭证刷新异常：原因」
-                toast("$label 凭证刷新异常：${error.message ?: error::class.java.simpleName}")
-                return@launch
-            }
-            if (outcome.getOrDefault(false).not()) {
-                toast("凭证仍有效，未触发续期")
-                return@launch
-            }
-            refreshModels()
-            val latest = container.accountStore.find(accountId)
-            val expiry = latest?.authExpiresAtMillis ?: 0L
-            toast(
-                if (expiry > 0) {
-                    AccountStatusFormat.expiryLabel(expiry, System.currentTimeMillis())
-                        .ifBlank { "凭证已刷新" }
-                } else {
-                    "凭证已刷新"
-                },
-            )
         }
+    }
+
+    private suspend fun refreshCredentialInternal(accountId: String) {
+        val account = container.accountStore.find(accountId)
+        if (account == null) {
+            toast("账号不存在")
+            return
+        }
+        val outcome = runCatching {
+            container.credentialRefresher.refreshAccount(accountId, ignoreBackoff = true)
+        }
+        val label = account.label.ifBlank { account.id }
+        outcome.exceptionOrNull()?.let { error ->
+            // 3.10.0 `C/C0008h.java`：「昵称 凭证刷新异常：原因」
+            toast("$label 凭证刷新异常：${error.message ?: error::class.java.simpleName}")
+            return
+        }
+        if (!outcome.getOrDefault(false)) {
+            toast("凭证仍有效，未触发续期")
+            return
+        }
+        refreshModels()
+        val latest = container.accountStore.find(accountId)
+        val expiry = latest?.authExpiresAtMillis ?: 0L
+        toast(
+            if (expiry > 0) {
+                AccountStatusFormat.expiryLabel(expiry, System.currentTimeMillis())
+                    .ifBlank { "凭证已刷新" }
+            } else {
+                "凭证已刷新"
+            },
+        )
     }
 
     /** 原版账号管理页的「刷新积分」：单账号请求真实额度，失败保留错误文案。 */

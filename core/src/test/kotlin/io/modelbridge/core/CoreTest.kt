@@ -300,7 +300,7 @@ class RouterTest {
     }
 
     @Test
-    fun `全部冷却时抛 UpstreamUnavailable`() = runTest {
+    fun `全部冷却时仍强制尝试一次`() = runTest {
         val provider = FakeProvider("p1", models = listOf(model("m1", "p1")))
         val registry = ProviderRegistry().apply { register(provider) }
         val accounts = InMemoryAccountStore(listOf(account("a1", "p1")))
@@ -310,8 +310,22 @@ class RouterTest {
         val router = Router(registry, accounts, health)
         router.updateCatalog(listOf(model("m1", "p1")))
 
-        val e = assertThrows<GatewayError.UpstreamUnavailable> { router.resolve("m1") }
-        assertEquals(30, e.retryAfterSeconds)
+        // 3.10.0 语义：冷却期间不做硬失败，强制尝试一次并记录诊断。
+        val targets = router.resolve("m1")
+        assertEquals(listOf("a1"), targets.map { it.account.id })
+        assertEquals("全部账号处于冷却，本次强制尝试一次", router.lastForcedAttempt)
+    }
+
+    @Test
+    fun `没有启用账号时仍报 NotFound`() = runTest {
+        val provider = FakeProvider("p1", models = listOf(model("m1", "p1")))
+        val registry = ProviderRegistry().apply { register(provider) }
+        val accounts = InMemoryAccountStore(listOf(account("a1", "p1").copy(enabled = false)))
+        val router = Router(registry, accounts, HealthTracker())
+        router.updateCatalog(listOf(model("m1", "p1")))
+
+        val e = assertThrows<GatewayError.NotFound> { router.resolve("m1") }
+        assertTrue(e.message!!.contains("m1"))
     }
 
     @Test

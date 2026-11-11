@@ -185,6 +185,7 @@ class GatewayRunner(
 
     /** 停止网关。 */
     fun stop() {
+        val wasRunning = _running.value
         server?.stop()
         server = null
         refreshJob?.cancel()
@@ -193,6 +194,18 @@ class GatewayRunner(
         maintenanceJob = null
         _running.value = false
         _port.value = 0
+        // 3.10.0 `GatewayService`：真正停止时记录「网关管家已停止」。
+        if (wasRunning) {
+            append(
+                LogEntry(
+                    time = System.currentTimeMillis(),
+                    method = "-",
+                    path = "-",
+                    status = 0,
+                    message = "网关管家已停止",
+                ),
+            )
+        }
     }
 
     /** 清空日志（原版日志页的「清空」）；累计统计保留。 */
