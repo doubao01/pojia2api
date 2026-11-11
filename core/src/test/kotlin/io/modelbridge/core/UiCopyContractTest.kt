@@ -54,6 +54,7 @@ class UiCopyContractTest {
         assertTrue(settings.contains("InfoRow(\"作者\", ABOUT_AUTHOR"))
         assertTrue(settings.contains("ABOUT_VERSION = \"3.10.0\""))
         assertTrue(settings.contains("影响上游怎么识别这批请求。默认关闭，打开后才开始清理；被风控盯上时再开。"))
+        assertTrue(settings.contains("只清理对话内容里的客户端痕迹：计费头整行、Claude Code / Codex 身份句、模板句、空模板参数。模型和工具参数不动。"))
         assertTrue(settings.contains("已开启：请求将去掉客户端身份痕迹"))
         assertTrue(settings.contains("已关闭：请求原样透传"))
         assertTrue(settings.contains("+ 添加密钥"))

@@ -173,6 +173,13 @@ fun SettingsScreen(vms: ViewModels) {
                     )
                 },
             )
+            Text(
+                "只清理对话内容里的客户端痕迹：计费头整行、Claude Code / Codex 身份句、模板句、空模板参数。模型和工具参数不动。",
+                fontSize = 12.5.sp,
+                color = AppStyle.SubtitleText,
+                lineHeight = 18.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
         }
 
         // ---------------- 配置 ----------------
