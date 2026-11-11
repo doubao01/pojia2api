@@ -414,7 +414,7 @@ private fun ProviderCard(
                         TextButton(onClick = onAdd) { Text("登录账号", fontSize = 13.sp) }
                     }
                     AuthKind.ApiKey -> {
-                        TextButton(onClick = onAdd) { Text("添加密钥", fontSize = 13.sp) }
+                        TextButton(onClick = onAdd) { Text("+ 添加密钥", fontSize = 13.sp) }
                     }
                     AuthKind.Cookie -> {
                         TextButton(onClick = onWebLogin) { Text("网页登录", fontSize = 13.sp) }
@@ -572,7 +572,7 @@ private fun AccountRow(
                             Text(policy.name + if (policy.enabled) "" else " · 已停用")
                         }
                     }
-                    if (policies.isEmpty()) Text("先到首页「策略管理」新建策略")
+                    if (policies.isEmpty()) Text("复制一段策略正文后点下方「新建策略」，绑定模型 ID")
                 }
             },
             confirmButton = { TextButton(onClick = { selectPolicy = false }) { Text("取消") } },

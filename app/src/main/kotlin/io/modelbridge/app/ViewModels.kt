@@ -615,6 +615,19 @@ class ViewModels(
     val loomyLogin: StateFlow<LoomyLoginUiState> = _loomyLogin.asStateFlow()
 
     fun sendLoomyCode(phone: String) {
+        // 3.10.0 dex：「先填手机号」「手机号格式不正确（大陆号码为 11 位）」
+        val digits = phone.filter(Char::isDigit)
+        if (digits.isEmpty()) {
+            _loomyLogin.value = LoomyLoginUiState(phone = phone, message = "先填手机号")
+            return
+        }
+        if (digits.length != 11) {
+            _loomyLogin.value = LoomyLoginUiState(
+                phone = phone,
+                message = "手机号格式不正确（大陆号码为 11 位）",
+            )
+            return
+        }
         val auth = container.loomySmsAuth
         if (auth == null) {
             _loomyLogin.value = LoomyLoginUiState(
@@ -648,6 +661,11 @@ class ViewModels(
         val challenge = state.challenge
         if (auth == null || challenge == null) {
             _loomyLogin.value = state.copy(message = "请先发送验证码")
+            return
+        }
+        // 3.10.0 dex：「手机号和验证码都要填」
+        if (code.isBlank()) {
+            _loomyLogin.value = state.copy(message = "手机号和验证码都要填")
             return
         }
         _loomyLogin.value = state.copy(busy = true, message = "正在验证…")
