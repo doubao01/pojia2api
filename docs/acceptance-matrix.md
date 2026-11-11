@@ -5,7 +5,7 @@
 ## 最近验证
 
 - 本地 JVM 回归：core 130、providers 91，失败 0。
-- GitHub Actions：run #35—#52、#57—#119、#121—#137 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复；#112 的账号中心 token 行误插 `else` 导致 APK 编译失败，已由 #113 修复；#120 的 `ConfigTransfer` 缺少 `contentOrNull` 导入导致 APK 编译失败，已由 #121 修复。地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
+- GitHub Actions：run #35—#52、#57—#119、#121—#138 均为 `内核测试 success`、`构建 APK success`；#55/#56 的 APK 编译失败（`decision.cached` 可空访问）已由 #57 修复；#112 的账号中心 token 行误插 `else` 导致 APK 编译失败，已由 #113 修复；#120 的 `ConfigTransfer` 缺少 `contentOrNull` 导入导致 APK 编译失败，已由 #121 修复。地址 `https://github.com/doubao01/pojia2api/actions/runs/42844751477`。
 - 主分支最新提交以 `git log -1` 为准；每次推送后由 CI 验证对应 HEAD。
 - 3.10.0 修复版 APK：`/root/workspace/网关管家修复/网关管家-3.10.0-修复版.apk`，sha256 `749e6ccc5f0c909f114d6e1b0406fbcb823eae3db0ac5e60f6c539aa200e5ee0`。
 
