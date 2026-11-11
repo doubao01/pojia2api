@@ -35,18 +35,24 @@ import kotlinx.serialization.json.putJsonArray
 /**
  * OpenCode 推理渠道（`opencode`）。
  *
- * 复刻官方 CLI 的出站形态：`Authorization: Bearer public` 表示匿名访问，
- * 配合一组 `x-opencode-*` 会话头。实测结论：
+ * 匿名访问用 `Authorization: Bearer public`。免费层按**请求内容**判定是否放行，
+ * 不看请求头——实测中 `x-opencode-*` 会话头对结果没有任何影响，故不再发送。
  *
- * - **协议层完全可用**：模型列表 85 个，会话头被接受，请求能进到配额判断；
- * - **免费模型按 IP 限流**：超限返回 429 `FreeUsageLimitError`，带 `Retry-After`；
- * - **付费模型需要 API Key**：不带 key 返回 401 `AuthError`。
+ * 免费层需要同时满足三个条件（见 [OpenCodeGate] 与 [OpenCodeTls]）：
  *
- * 所以本 provider 的凭据有两种形态：
- * - [Credential.None] 或空 token：匿名，只能调 `-free` 结尾的免费模型；
+ * 1. 系统提示词含 `<env>` 块，且块内有 `Working directory:` 一行；
+ * 2. 声明官方 `read` 工具，描述与参数 schema 都要匹配（只声明 `bash` 会被拒）；
+ * 3. TLS ClientHello 提供官方 CLI 的 17 个加密套件。
+ *
+ * 前两项由 [OpenCodeGate] 在请求体上完成。第三项在传输层，JVM 内难以精确复现
+ * （JDK 默认禁用其中的 CBC-SHA 套件），因此本 provider 需要一个能控制 TLS 的
+ * 本地转发层；见 [OpenCodeTls] 的说明。
+ *
+ * 凭据两种形态：
+ * - [Credential.None]：匿名，只能调 `-free` 结尾的免费模型；
  * - [Credential.ApiKey]：带 key，可调全部模型。
  *
- * 免费模型的额度按出口 IP 计，不按会话或 UA 计——换 seed、换 UA 都不解除。
+ * 注意 `FreeUsageLimitError` 不等于配额耗尽——门禁拒绝也返回它。
  */
 class OpenCodeProvider : Provider {
 
@@ -68,14 +74,6 @@ class OpenCodeProvider : Provider {
         encodeDefaults = false
     }
 
-    /** seed 按账号稳定复用：同一账号始终是同一个会话与项目。 */
-    private val seeds = java.util.concurrent.ConcurrentHashMap<String, String>()
-
-    private fun seed(context: ProviderContext): String {
-        val key = context.accountUid.ifBlank { "anonymous" }
-        return seeds.computeIfAbsent(key) { OpenCodeIdentity.newSeed() }
-    }
-
     private fun apiKey(context: ProviderContext): String = when (val credential = context.credential) {
         is Credential.ApiKey -> credential.key
         is Credential.OAuth -> credential.accessToken
@@ -83,28 +81,28 @@ class OpenCodeProvider : Provider {
         else -> ""
     }
 
-    /** 官方 CLI 请求头。 */
+    /**
+     * 请求头。
+     *
+     * 只保留真正影响结果的几项：鉴权、UA、协议类型。会话头已确认无效，不再发送。
+     */
     private fun headers(context: ProviderContext): Map<String, String> {
-        val seed = seed(context)
-        val session = OpenCodeIdentity.sessionId(seed)
         val key = apiKey(context)
         return linkedMapOf(
             // 匿名时官方 CLI 就是发 "Bearer public"
             "Authorization" to "Bearer ${key.ifBlank { "public" }}",
-            "User-Agent" to OpenCodeIdentity.USER_AGENT,
-            "x-opencode-client" to "cli",
-            "x-opencode-session" to session,
-            "x-opencode-session-id" to session,
-            "x-session-affinity" to session,
-            "X-Session-Id" to session,
-            "x-opencode-project" to OpenCodeIdentity.projectId(seed),
+            "User-Agent" to USER_AGENT,
             "Content-Type" to "application/json",
             "Accept" to "application/json, text/event-stream",
         )
     }
 
     private fun baseUrl(context: ProviderContext): String =
-        context.baseUrl.ifBlank { OpenCodeIdentity.INFERENCE_BASE }
+        context.baseUrl.ifBlank { INFERENCE_BASE }
+
+    /** 免费模型是否走门禁适配：带 key 且非免费模型时不改写。 */
+    private fun needsGate(context: ProviderContext, model: String): Boolean =
+        OpenCodeGate.needsAdaptation(apiKey(context), model)
 
     /**
      * 拉取模型列表。
@@ -160,7 +158,13 @@ class OpenCodeProvider : Provider {
     }
 
     override suspend fun chat(context: ProviderContext, request: ChatRequest): ChatResult {
-        val payload = buildBody(request)
+        // 免费层按内容判定：先注入 env 块、补官方 read 声明、换掉被拒的工具名
+        val adapted = if (needsGate(context, request.model)) {
+            OpenCodeGate.adapt(request)
+        } else {
+            request
+        }
+        val payload = buildBody(adapted)
         val response = context.http.execute(
             HttpRequest(
                 method = "POST",
@@ -186,14 +190,14 @@ class OpenCodeProvider : Provider {
             .firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value.orEmpty()
         // 上游可能回 SSE，也可能直接回完整 JSON
         return if (contentType.contains("text/event-stream", ignoreCase = true)) {
-            if (request.stream) {
-                ChatResult.Stream(parseSse(response.bodyLines(), request.model))
+            if (adapted.stream) {
+                ChatResult.Stream(parseSse(response.bodyLines(), adapted.model))
             } else {
-                ChatResult.Complete(aggregate(response.bodyLines(), request.model))
+                ChatResult.Complete(aggregate(response.bodyLines(), adapted.model))
             }
         } else {
             val body = response.bodyBytes().decodeToString()
-            ChatResult.Complete(parseCompletion(body, request.model))
+            ChatResult.Complete(parseCompletion(body, adapted.model))
         }
     }
 
@@ -204,7 +208,8 @@ class OpenCodeProvider : Provider {
         val type = error?.text("type") ?: root?.text("type")
         val message = error?.text("message") ?: root?.text("message")
         val hint = when {
-            type == "FreeUsageLimitError" -> "免费模型额度已用尽（按出口 IP 计）"
+            // 这个错误码不能断定为配额耗尽：门禁拒绝也返回它
+            type == "FreeUsageLimitError" -> "免费层拒绝：额度可能已用尽，也可能未通过内容门禁"
             type == "AuthError" -> "该模型需要 API Key"
             type == "authentication_error" -> "凭据无效"
             status == 401 -> "凭据无效或该模型需要 API Key"
@@ -359,7 +364,8 @@ class OpenCodeProvider : Provider {
             val function = call["function"] as? JsonObject ?: return@mapNotNull null
             ToolCall(
                 id = call.text("id"),
-                name = function.text("name"),
+                // 门禁会把两个工具名换成别名，这里翻回宿主工具名
+                name = OpenCodeGate.restoreToolName(function.text("name")),
                 arguments = function.text("arguments").ifBlank { "{}" },
             )
         }
@@ -398,7 +404,7 @@ class OpenCodeProvider : Provider {
                 if (builder.name.isBlank()) return@mapNotNull null
                 ToolCall(
                     id = builder.id.ifBlank { "call_${builder.name}" },
-                    name = builder.name,
+                    name = OpenCodeGate.restoreToolName(builder.name),
                     arguments = builder.arguments.toString().ifBlank { "{}" },
                 )
             },
@@ -442,6 +448,14 @@ class OpenCodeProvider : Provider {
         var id: String = ""
         var name: String = ""
         val arguments = StringBuilder()
+    }
+
+    companion object {
+        /** 推理端点基址。 */
+        const val INFERENCE_BASE = "https://opencode.ai/inference"
+
+        /** 官方 CLI 的 UA 形态。 */
+        const val USER_AGENT = "opencode/latest/2.0.29/cli"
     }
 }
 
