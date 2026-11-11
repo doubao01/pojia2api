@@ -142,6 +142,7 @@ class UiCopyContractTest {
         assertTrue(accounts.contains("发现 "))
         assertTrue(accounts.contains(" 个网关"))
         assertTrue(accounts.contains("自定义中转站"))
+        assertTrue(accounts.contains("账号登录后，模型才会出现在「模型」页。签到与任务会按账号逐个执行。"))
         assertTrue(accounts.contains("还没有中转站"))
         assertTrue(accounts.contains("个模型（"))
         assertTrue(accounts.contains("固定策略"))

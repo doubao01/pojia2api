@@ -80,7 +80,7 @@ fun AccountsScreen(vms: ViewModels) {
             color = AppStyle.BodyText,
         )
         Text(
-            "关掉的账号不会出现在模型列表里",
+            "账号登录后，模型才会出现在「模型」页。签到与任务会按账号逐个执行。",
             fontSize = 12.sp,
             color = AppStyle.SubtitleText,
             modifier = Modifier.padding(top = 2.dp),
