@@ -24,6 +24,7 @@
 | 到期前刷新设备授权凭据 | `AccountCredentialRefresher` 将已保存账号映射回 Qoder/WorkBuddy 刷新协议，提前 5 分钟续期；轮换令牌、有效期和身份元数据原子写回；失败退避、并发编辑不覆盖；接进网关启动/周期维护、模型刷新与连通性检测，刷新后失效模型目录缓存 | `AccountCredentialRefresherTest`（8 项）、`CredentialRefreshCatalogTest`、CI APK；真实供应商刷新未验证 |
 | 策略库与策略注入 | `PolicyMatcher` / `PolicyInjector` / `PrefsPolicyStore` / `PolicyScreen`；固定绑定与自动匹配；帮助文案按 3.10.0 dex 全文对齐，访问日志记录策略命中/未注入原因 | `PolicyTest`、`PolicyGatewayTest`、`UiCopyContractTest`、CI APK |
 | WebView Cookie 登录 | `WebLoginDialog` 启用 JavaScript/DOM Storage，显式放开第三方 Cookie，登录完成后 `flush()` 并按主机与 https 域名读取 Cookie，保存为 `Credential.Cookies`；按钮/错误提示按 3.10.0 文案对齐，并按供应商显示原版 DeepSeek/文心/智谱/美团等专属下方页面提示及「浏览器通道：页面加载中/就绪」状态 | `UiCopyContractTest`、CI APK；真实站点登录未验证 |
+| OpenCode 推理渠道 | 新增 `OpenCodeProvider`：`ses_` 会话 id 与 40 位 project id 按官方形态派生且按账号稳定，出站带 `x-opencode-*` 会话头族，匿名用 `Bearer public`、配置 API Key 时替换为真实密钥；请求强制流式并要求返回 usage；免费额度与付费模型缺少密钥分别映射上游错误；模型目录解析 limit 与 capabilities | `OpenCodeProviderTest`（12 项）、CI APK；真实上游未验证 |
 | WorkBuddy 桌面端接入 | 新增 `WorkBuddyProvider`，复刻官方出站形态：完整会话头族、gzip 请求体、按账号稳定会话 id、企业号头、流式/非流式、11140 封禁与 14018 额度错误码；挂接设备授权刷新与账号业务（签到/任务/额度），存档保留 `workbuddy` 独立供应商 | `WorkBuddyProviderTest`（11 项）、`AccountArchiveTest`、CI APK；真实上游未验证 |
 | Qoder/CodeBuddy 设备授权 | `DeviceLoginDialog` + `QoderDeviceAuth` / `WorkBuddyDeviceAuth` 轮询、取消、OAuth 元数据保存 | 41 个设备授权契约测试、CI APK；真实授权未验证 |
 | Loomy 手机验证码 | `LoomySmsAuth` 两步 sendCode/checkCode 与 `LoomySmsDialog`；签名材料显式注入；登录成功保存 14 天会话有效期 | 5 个协议测试、`CredentialExpiryTest`、CI APK；生产签名材料未注入 |
