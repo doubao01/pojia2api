@@ -163,7 +163,7 @@ private fun TaskCenter(
         if (state.tasks.isEmpty()) {
             TaskRow(
                 "任务列表",
-                "没有可用任务",
+                if (state.busy) "正在读取任务…" else "没有可用任务",
                 state.tasksError.ifBlank { "当前供应商均不支持签到或任务" },
             )
         } else {
