@@ -50,6 +50,7 @@ fun AccountsScreen(vms: ViewModels) {
     val accounts by vms.accounts.collectAsState()
     val credits by vms.accountCredits.collectAsState()
     val customRelays by vms.customRelays.collectAsState()
+    val allModels by vms.models.collectAsState()
     val scanned by vms.scannedPorts.collectAsState()
     val scanning by vms.scanning.collectAsState()
     val context = LocalContext.current
@@ -148,6 +149,7 @@ fun AccountsScreen(vms: ViewModels) {
                     RelayRow(
                         relay = relay,
                         checked = checks[relay.id],
+                        models = allModels.filter { it.providerId == relay.providerId },
                         onToggle = { vms.toggleAccount(relay.id, it) },
                         onCheck = { vms.checkAccount(relay) },
                         onDelete = { vms.deleteAccount(relay.id) },
@@ -284,6 +286,7 @@ fun AccountsScreen(vms: ViewModels) {
 private fun RelayRow(
     relay: Account,
     checked: String?,
+    models: List<io.modelbridge.spi.ModelInfo>,
     onToggle: (Boolean) -> Unit,
     onCheck: () -> Unit,
     onDelete: () -> Unit,
@@ -296,7 +299,14 @@ private fun RelayRow(
             Text(relay.label.ifBlank { relay.baseUrl }, fontSize = 14.sp, color = AppStyle.BodyText)
             Text(
                 buildList {
-                    add(relay.baseUrl)
+                    add(relay.baseUrl.ifBlank { "未填写地址" })
+                    // 原版上游行：地址 · N 个模型（首个 等）· 固定策略 · 冷却中
+                    if (models.isNotEmpty()) {
+                        add("${models.size} 个模型（${models.first().id}${if (models.size > 1) " 等" else ""}）")
+                    } else {
+                        add("0 个模型")
+                    }
+                    if (relay.fixedPolicyId != null) add("固定策略")
                     add(AccountStatusFormat.enabledLabel(relay.enabled))
                     checked?.let { add(it) }
                 }.joinToString(" · "),
