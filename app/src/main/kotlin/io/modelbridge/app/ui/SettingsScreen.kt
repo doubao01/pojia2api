@@ -26,7 +26,10 @@ import io.modelbridge.app.prefs.GatewaySettings
  * 监听 / 调度 / 启动 / 身份与指纹（进阶）+ 关于。
  */
 @Composable
-fun SettingsScreen(vms: ViewModels) {
+fun SettingsScreen(
+    vms: ViewModels,
+    onOpenAccounts: () -> Unit = {},
+) {
     val settings by vms.settings.collectAsState()
     val context = LocalContext.current
     val transfer = remember { ConfigTransfer(context) }
@@ -210,6 +213,12 @@ fun SettingsScreen(vms: ViewModels) {
                         pendingMessage = "已导入 $imported 项"
                     }
                 },
+            )
+            RowDivider()
+            ActionRow(
+                label = "账号管理",
+                hint = "查看所有供应商已登录的账号",
+                onClick = onOpenAccounts,
             )
             RowDivider()
             ActionRow(

@@ -248,7 +248,13 @@ private fun MainScreen(vms: ViewModels) {
                             1 -> AccountsScreen(vms)
                             2 -> ModelsScreen(vms)
                             3 -> LogScreen(vms)
-                            else -> SettingsScreen(vms)
+                            else -> SettingsScreen(
+                                vms = vms,
+                                onOpenAccounts = {
+                                    centerMode = AccountCenterMode.Accounts
+                                    tab = 0
+                                },
+                            )
                         }
                     }
                 }
