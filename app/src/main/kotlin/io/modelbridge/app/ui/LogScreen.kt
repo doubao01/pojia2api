@@ -49,7 +49,7 @@ fun LogScreen(vms: ViewModels) {
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
             Text(
-                "最近 ${entries.value.size} 条 · 新的在上",
+                "最近 ${entries.value.size} 条",
                 fontSize = 12.sp,
                 color = AppStyle.SubtitleText,
                 modifier = Modifier.padding(top = 2.dp),

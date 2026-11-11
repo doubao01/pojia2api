@@ -70,7 +70,7 @@ class UiCopyContractTest {
         assertTrue(homeLayout.contains("leftLabel = \"缓存命中率\""))
         assertTrue(homeLayout.contains("rightLabel = \"平均耗时\""))
         assertTrue(logs.contains("最近 "))
-        assertTrue(logs.contains(" 条 · 新的在上"))
+        assertTrue(logs.contains("\"最近 \${entries.value.size} 条\""))
         assertTrue(logs.contains("暂无日志"))
         assertTrue(logs.contains("takeLast(30)"))
         assertTrue(logs.contains("Info(\"I\")"))
