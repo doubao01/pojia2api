@@ -234,29 +234,31 @@ fun SettingsScreen(
         // ---------------- 关于 ----------------
         GroupTitle("关于")
         SettingsGroup {
-            InfoRow("应用", "网关管家（ModelBridge 重写实现）", mono = false)
-            RowDivider()
             InfoRow("版本", ABOUT_VERSION)
             RowDivider()
             InfoRow("作者", ABOUT_AUTHOR, mono = false)
             RowDivider()
-            InfoRow("许可证", "Apache-2.0")
-            RowDivider()
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "免责声明",
-                    fontSize = 13.sp,
-                    color = AppStyle.BodyText,
-                )
-                Text(
-                    text = "本应用仅供个人学习与技术研究使用，不提供任何上游服务，也不内置任何模型或策略内容。\n\n" +
-                        "上游地址、密钥、模型与策略正文均由使用者自行配置，其来源与合规性由使用者自行负责。使用本应用时须遵守所在地法律法规，以及所用上游服务的条款。\n\n" +
-                        "请勿将本应用用于任何违法活动。使用本应用产生的一切后果由使用者自行承担，与作者无关。\n\n" +
-                        "本应用只在本机转发，不连接任何第三方服务器。上游是你自己配置的本地网关，策略正文也只存在本机。",
+                    text = "本应用只在本机转发，不连接任何第三方服务器。上游是你自己配置的本地网关，策略正文也只存在本机。",
                     fontSize = 12.sp,
                     color = AppStyle.SubtitleText,
                     lineHeight = 17.sp,
-                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        }
+
+        // ---------------- 免责声明 ----------------
+        GroupTitle("免责声明")
+        SettingsGroup {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "本应用仅供个人学习与技术研究使用，不提供任何上游服务，也不内置任何模型或策略内容。\n\n" +
+                        "上游地址、密钥、模型与策略正文均由使用者自行配置，其来源与合规性由使用者自行负责。使用本应用时须遵守所在地法律法规，以及所用上游服务的条款。\n\n" +
+                        "请勿将本应用用于任何违法活动。使用本应用产生的一切后果由使用者自行承担，与作者无关。",
+                    fontSize = 12.sp,
+                    color = AppStyle.SubtitleText,
+                    lineHeight = 17.sp,
                 )
             }
         }
