@@ -117,6 +117,7 @@ class GatewayRunner(
                         gateway.policyName?.let { add("策略「$it」") }
                         gateway.lastPolicyError?.let { add("未注入策略：$it") }
                         gateway.lastFingerprintDiagnostic?.let { add(it) }
+                        gateway.lastForcedAttempt?.let { add(it) }
                     }.joinToString("；").ifBlank { null }
                     append(
                         LogEntry(

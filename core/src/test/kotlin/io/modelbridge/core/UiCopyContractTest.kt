@@ -169,6 +169,7 @@ class UiCopyContractTest {
         assertTrue(viewModels.contains("手机号和验证码都要填"))
         assertTrue(accounts.contains("\"+ 添加密钥\""))
         assertTrue(runner.contains("网关管家已停止"))
+        assertTrue(runner.contains("gateway.lastForcedAttempt"))
         val routerSource = File(root, "core/src/main/kotlin/io/modelbridge/core/Router.kt").readText()
         assertTrue(routerSource.contains("全部账号处于冷却，本次强制尝试一次"))
         assertTrue(accounts.contains("还没有中转站"))

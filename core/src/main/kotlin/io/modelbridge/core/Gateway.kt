@@ -117,6 +117,11 @@ class Gateway(
     var lastUpstreamId: String? = null
         private set
 
+    /** 最近一次是否因全部账号冷却而强制尝试，写进访问日志便于解释为何仍发出请求。 */
+    @Volatile
+    var lastForcedAttempt: String? = null
+        private set
+
     private val json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
@@ -360,6 +365,7 @@ class Gateway(
         val modelId = if (suffixIndex > 0) publicModel.substring(0, suffixIndex) else publicModel
         val original = wire.copy(model = modelId)
         val allTargets = router.resolve(modelId)
+        val forcedAttempt = router.lastForcedAttempt
         val targets = if (upstreamHint.isEmpty()) {
             allTargets
         } else {
@@ -382,6 +388,7 @@ class Gateway(
         policyName = null
         lastPolicyError = null
         lastUpstreamId = null
+        lastForcedAttempt = forcedAttempt
         // 每次从原始请求体注入，故障转移不叠加前一个账号的策略。
         // 重试按「整轮」计：先把账号按优先级走一遍做故障转移，
         // 整轮都失败后再从头重试一轮。这样单账号时是原地重试，

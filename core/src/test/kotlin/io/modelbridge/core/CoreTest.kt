@@ -314,6 +314,30 @@ class RouterTest {
         val targets = router.resolve("m1")
         assertEquals(listOf("a1"), targets.map { it.account.id })
         assertEquals("全部账号处于冷却，本次强制尝试一次", router.lastForcedAttempt)
+
+        // 网关把它暴露给访问日志，解释为何冷却中仍发出请求
+        val gateway = Gateway(
+            router = router,
+            catalog = ModelCatalog(registry, accounts),
+            registry = registry,
+            accounts = accounts,
+            health = health,
+            contextFactory = StubContextFactory().factory,
+        )
+        gateway.refreshCatalog()
+        runCatching {
+            gateway.handle(
+                io.modelbridge.core.http.ServerRequest(
+                    method = "POST",
+                    path = "/v1/chat/completions",
+                    query = "",
+                    version = "HTTP/1.1",
+                    headers = emptyMap(),
+                    body = """{"model":"m1","messages":[{"role":"user","content":"hi"}]}""".encodeToByteArray(),
+                ),
+            )
+        }
+        assertEquals("全部账号处于冷却，本次强制尝试一次", gateway.lastForcedAttempt)
     }
 
     @Test
