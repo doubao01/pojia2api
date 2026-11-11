@@ -88,6 +88,8 @@ class UiCopyContractTest {
         val accountEdit = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/AccountEditDialog.kt").readText()
         val accounts = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/AccountsScreen.kt").readText()
         assertTrue(accountEdit.contains("昵称（模型名后缀，如 猫爪 → deepseek@猫爪）"))
+        assertTrue(accountEdit.contains("+ 添加密钥"))
+        assertTrue(accountEdit.contains("密钥 \${index + 2}"))
         assertTrue(accountEdit.contains("先填地址"))
         assertTrue(accountEdit.contains("地址需以 http:// 开头"))
         assertTrue(accounts.contains("确定删除「"))

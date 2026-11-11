@@ -230,7 +230,7 @@ fun AccountsScreen(vms: ViewModels) {
         AccountEditDialog(
             edit = edit,
             onDismiss = { editing = null },
-            onSave = { label, credential, baseUrl ->
+            onSave = { label, credential, baseUrl, extraApiKeys ->
                 val normalizedBaseUrl = if (edit.provider.id == "custom") {
                     io.modelbridge.core.ScannedGatewayParser.normalizeBaseUrl(baseUrl)
                 } else {
@@ -242,6 +242,7 @@ fun AccountsScreen(vms: ViewModels) {
                     label = label,
                     credential = credential,
                     baseUrl = normalizedBaseUrl,
+                    extraApiKeys = extraApiKeys,
                 )
                 editing = null
             },

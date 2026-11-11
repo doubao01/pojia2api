@@ -18,6 +18,9 @@ interface ProviderContext {
 
     /** 上游基础地址，允许用户自建中转时覆盖。 */
     val baseUrl: String
+
+    /** 附加 API Key；3.10.0 自定义上游支持配置多个密钥，首个在 [credential] 里。 */
+    val extraApiKeys: List<String> get() = emptyList()
 }
 
 /** 供应商凭据。保存格式使用稳定类型名，避免类重构破坏存档。 */

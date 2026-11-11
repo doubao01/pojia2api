@@ -75,6 +75,10 @@ object AccountArchive {
             baseUrl = baseUrl,
             priority = obj.long("priority").toInt(),
             fixedPolicyId = obj.string("profileId", "profile_id").takeIf { it.isNotBlank() },
+            extraApiKeys = (obj["apiKeys"] as? JsonArray)
+                ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) }
+                ?.filter { it != apiKey }
+                .orEmpty(),
         )
     }
 
@@ -159,6 +163,7 @@ object AccountArchive {
             authTokenKind = tokenKind,
             authExpiresAtMillis = expiresAtMillis,
             fixedPolicyId = obj.string("fixedPolicyId").takeIf { it.isNotBlank() },
+            extraApiKeys = obj.stringSet("extraApiKeys").toList(),
         )
     }
 

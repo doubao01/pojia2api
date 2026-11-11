@@ -747,6 +747,7 @@ class ViewModels(
         authNickname: String = "",
         authTokenKind: String = "Bearer",
         authExpiresAtMillis: Long = 0,
+        extraApiKeys: List<String> = emptyList(),
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             val existing = id?.let { container.accountStore.find(it) }
@@ -771,6 +772,7 @@ class ViewModels(
                     existing?.authExpiresAtMillis ?: 0
                 },
                 fixedPolicyId = existing?.fixedPolicyId,
+                extraApiKeys = extraApiKeys.map { it.trim() }.filter { it.isNotEmpty() }.distinct(),
             )
             container.accountStore.upsert(account)
             refreshModels()
@@ -986,6 +988,7 @@ class ViewModels(
             override val http = container.httpClient
             // 账号没填自定义地址时留空，由供应商实现决定默认地址
             override val baseUrl = account.baseUrl
+            override val extraApiKeys = account.extraApiKeys
         }
 
     private fun providerName(providerId: String): String =

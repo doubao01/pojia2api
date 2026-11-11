@@ -46,6 +46,8 @@ data class Account(
     val authExpiresAtMillis: Long = 0,
     /** 固定绑定策略；null 按模型自动匹配，停用或已删除的策略不注入。 */
     val fixedPolicyId: String? = null,
+    /** 3.10.0 自定义上游的附加 API Key；首个密钥仍放在 [credential] 里。 */
+    val extraApiKeys: List<String> = emptyList(),
 ) {
     /** 凭据是否已过期；0 表示未知或永不过期。 */
     fun isExpired(nowMillis: Long): Boolean =

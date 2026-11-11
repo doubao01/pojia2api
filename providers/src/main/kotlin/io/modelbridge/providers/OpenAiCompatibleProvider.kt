@@ -137,13 +137,18 @@ abstract class OpenAiCompatibleProvider : Provider {
 
     override suspend fun listModels(context: ProviderContext): List<ModelInfo> {
         val url = joinUrl(context.baseUrl.ifBlank { defaultBaseUrl }, modelsPath)
-        val response = context.http.execute(
-            HttpRequest(
-                method = "GET",
-                url = url,
-                headers = defaultHeaders() + authHeaders(context.credential),
-            ),
-        )
+        // 3.10.0 自定义上游可配置多个 API Key：401/403 时依次换下一个。
+        val responses = credentialCandidates(context).map { credential ->
+            context.http.execute(
+                HttpRequest(
+                    method = "GET",
+                    url = url,
+                    headers = defaultHeaders() + authHeaders(credential),
+                ),
+            ) to credential
+        }
+        val (response, _) = responses.firstOrNull { it.first.statusCode !in setOf(401, 403) }
+            ?: responses.last()
 
         if (response.statusCode !in 200..299) {
             val detail = runCatching { response.bodyBytes().decodeToString() }.getOrDefault("")
@@ -171,6 +176,36 @@ abstract class OpenAiCompatibleProvider : Provider {
             ),
         )
 
+        if (response.statusCode in setOf(401, 403) && context.extraApiKeys.isNotEmpty()) {
+            for (key in context.extraApiKeys) {
+                val retry = context.http.execute(
+                    HttpRequest(
+                        method = "POST",
+                        url = url,
+                        headers = defaultHeaders() + authHeaders(Credential.ApiKey(key)) + mapOf(
+                            "Content-Type" to "application/json",
+                        ),
+                        body = body,
+                    ),
+                )
+                if (retry.statusCode !in setOf(401, 403)) {
+                    return respond(retry, request)
+                }
+            }
+        }
+
+        return respond(response, request)
+    }
+
+    /** 首个密钥 + 附加密钥，用于自定义上游的多密钥轮换。 */
+    private fun credentialCandidates(context: ProviderContext): List<Credential> =
+        listOf(context.credential) + context.extraApiKeys.map { Credential.ApiKey(it) }
+
+    /** 统一处理对话响应：错误映射与流式/非流式解析。 */
+    private suspend fun respond(
+        response: io.modelbridge.spi.HttpResponse,
+        request: ChatRequest,
+    ): ChatResult {
         if (response.statusCode !in 200..299) {
             val detail = runCatching { response.bodyBytes().decodeToString() }.getOrDefault("")
             throw ProviderException(

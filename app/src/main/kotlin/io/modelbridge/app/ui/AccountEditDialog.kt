@@ -1,5 +1,6 @@
 package io.modelbridge.app.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,7 +32,7 @@ import io.modelbridge.spi.Credential
 fun AccountEditDialog(
     edit: AccountEdit,
     onDismiss: () -> Unit,
-    onSave: (label: String, credential: Credential, baseUrl: String) -> Unit,
+    onSave: (label: String, credential: Credential, baseUrl: String, extraApiKeys: List<String>) -> Unit,
 ) {
     val provider = edit.provider
     val existing = edit.account
@@ -42,6 +43,10 @@ fun AccountEditDialog(
     // 凭据字段
     var apiKey by remember {
         mutableStateOf((existing?.credential as? Credential.ApiKey)?.key ?: "")
+    }
+    // 3.10.0 自定义上游可配置多个 API Key（「密钥 N」+「+ 添加密钥」）。
+    var extraApiKeys by remember {
+        mutableStateOf(existing?.extraApiKeys?.toList() ?: emptyList())
     }
     var cookie by remember {
         mutableStateOf((existing?.credential as? Credential.Cookies)?.raw ?: "")
@@ -106,6 +111,34 @@ fun AccountEditDialog(
                             label = { Text("API Key", fontSize = 12.sp) },
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
+                        // 原版「添加上游」可追加多个密钥，遇到 401 时依次换用。
+                        extraApiKeys.forEachIndexed { index, key ->
+                            OutlinedTextField(
+                                value = key,
+                                onValueChange = { value ->
+                                    extraApiKeys = extraApiKeys.toMutableList().also { it[index] = value }
+                                },
+                                singleLine = true,
+                                label = { Text("密钥 ${index + 2}", fontSize = 12.sp) },
+                                trailingIcon = {
+                                    Text(
+                                        text = "删除",
+                                        fontSize = 11.sp,
+                                        color = AppStyle.Accent,
+                                        modifier = Modifier
+                                            .clickable {
+                                                extraApiKeys =
+                                                    extraApiKeys.filterIndexed { i, _ -> i != index }
+                                            }
+                                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                            )
+                        }
+                        TextButton(onClick = { extraApiKeys = extraApiKeys + "" }) {
+                            Text("+ 添加密钥", fontSize = 12.sp)
+                        }
                     }
                     AuthKind.Cookie -> {
                         OutlinedTextField(
@@ -195,7 +228,7 @@ fun AccountEditDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(label.trim(), credential, baseUrl.trim()) },
+                onClick = { onSave(label.trim(), credential, baseUrl.trim(), extraApiKeys) },
                 enabled = valid,
             ) { Text("保存") }
         },

@@ -168,6 +168,7 @@ class AppContainer(private val app: Application) {
                 override val credential = account.credential
                 override val http = httpClient
                 override val baseUrl = account.baseUrl
+                override val extraApiKeys = account.extraApiKeys
             }
         }
 
