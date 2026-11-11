@@ -99,6 +99,8 @@ class UiCopyContractTest {
         assertTrue(accountEdit.contains("+ 添加密钥"))
         assertTrue(accountEdit.contains("密钥 \${index + 2}"))
         assertTrue(accountEdit.contains("先填地址"))
+        // 只有自定义中转站强制填地址；内置匿名供应商用默认地址
+        assertTrue(accountEdit.contains("provider.id == \"custom\" && baseUrl"))
         assertTrue(accountEdit.contains("地址需以 http:// 开头"))
         assertTrue(accounts.contains("确定删除「"))
         assertTrue(accounts.contains("？本地凭证将一并清除。"))

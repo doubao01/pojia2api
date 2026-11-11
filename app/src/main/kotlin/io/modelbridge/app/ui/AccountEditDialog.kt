@@ -72,8 +72,12 @@ fun AccountEditDialog(
         AuthKind.PhoneCode -> phone.isNotBlank() && code.isNotBlank()
         // OAuth 必须先在网页登录里拿到凭据
         AuthKind.OAuth -> existing?.credential != null && existing.credential != Credential.None
-        // 原版自定义上游要求填地址；地址必须以 http:// 开头。
-        AuthKind.None -> baseUrl.trim().let { it.isNotEmpty() && it.startsWith("http") }
+        // 原版自定义上游要求填地址；内置匿名供应商用默认地址，无需填写。
+        AuthKind.None -> if (provider.id == "custom") {
+            baseUrl.trim().let { it.isNotEmpty() && it.startsWith("http") }
+        } else {
+            true
+        }
     }
 
     AlertDialog(
@@ -200,14 +204,14 @@ fun AccountEditDialog(
                     singleLine = true,
                     label = {
                         Text(
-                            if (provider.authKind == AuthKind.None) "地址" else "自定义地址（可选）",
+                            if (provider.id == "custom") "地址" else "自定义地址（可选）",
                             fontSize = 12.sp,
                         )
                     },
                     placeholder = { Text("留空用默认地址", fontSize = 12.sp) },
-                    isError = provider.authKind == AuthKind.None && baseUrl.isNotBlank() &&
+                    isError = provider.id == "custom" && baseUrl.isNotBlank() &&
                         !baseUrl.trim().startsWith("http"),
-                    supportingText = if (provider.authKind == AuthKind.None) {
+                    supportingText = if (provider.id == "custom") {
                         {
                             Text(
                                 if (baseUrl.isBlank()) "先填地址" else "地址需以 http:// 开头",
