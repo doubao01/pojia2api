@@ -78,12 +78,15 @@ abstract class OpenAiCompatibleProvider : Provider {
 
     /** 解析模型条目；子类可覆盖以适配不同的模型列表结构。 */
     protected open fun parseModels(body: String): List<ModelInfo> {
-        val root = json.parseToJsonElement(body)
+        val root = runCatching { json.parseToJsonElement(body) }.getOrElse {
+            // 3.10.0 dex：「模型响应不是合法 JSON」
+            throw ProviderException("$displayName 模型响应不是合法 JSON：${it.message.orEmpty().take(120)}")
+        }
         val array = when {
             root is JsonObject -> root["data"] as? JsonArray ?: root["models"] as? JsonArray
             root is JsonArray -> root
             else -> null
-        } ?: return emptyList()
+        } ?: throw ProviderException("$displayName 模型响应里找不到模型数组")
 
         return array.mapNotNull { element ->
             val obj = element as? JsonObject ?: return@mapNotNull null
