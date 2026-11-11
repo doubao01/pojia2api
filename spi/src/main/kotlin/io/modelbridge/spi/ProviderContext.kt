@@ -21,6 +21,23 @@ interface ProviderContext {
 
     /** 附加 API Key；3.10.0 自定义上游支持配置多个密钥，首个在 [credential] 里。 */
     val extraApiKeys: List<String> get() = emptyList()
+
+    /**
+     * 账号在供应商侧的用户 ID。
+     *
+     * 官方客户端把它放在 `X-User-Id`，部分上游还要求它参与设备标识派生。
+     * 为空表示该供应商不需要，或上下文来自不携带账号元数据的调用点。
+     */
+    val accountUid: String get() = ""
+
+    /** 企业/租户 ID。官方客户端区分个人号与企业号的请求形态，例如 `X-Private-Data`。 */
+    val tenantId: String get() = ""
+
+    /** 账号所属区域，例如 `cn`、`global`。为空时由供应商按 [baseUrl] 自行判断。 */
+    val region: String get() = ""
+
+    /** 账号绑定的域名，例如 `www.codebuddy.cn`。 */
+    val accountDomain: String get() = ""
 }
 
 /** 供应商凭据。保存格式使用稳定类型名，避免类重构破坏存档。 */

@@ -1036,6 +1036,10 @@ class ViewModels(
             // 账号没填自定义地址时留空，由供应商实现决定默认地址
             override val baseUrl = account.baseUrl
             override val extraApiKeys = account.extraApiKeys
+            override val accountUid = account.authUid
+            override val tenantId = account.authTenantId
+            override val region = account.authRegion
+            override val accountDomain = account.authDomain
         }
 
     private fun providerName(providerId: String): String =

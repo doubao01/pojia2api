@@ -169,6 +169,10 @@ class AppContainer(private val app: Application) {
                 override val http = httpClient
                 override val baseUrl = account.baseUrl
                 override val extraApiKeys = account.extraApiKeys
+                override val accountUid = account.authUid
+                override val tenantId = account.authTenantId
+                override val region = account.authRegion
+                override val accountDomain = account.authDomain
             }
         }
 
