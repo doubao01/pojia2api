@@ -181,7 +181,7 @@ private fun TaskCenter(
         }
     }
 
-    GroupTitle("额度一览")
+    GroupTitle("可用积分")
     SettingsGroup {
         QuotaSummary(state)
         TaskRow(
@@ -191,7 +191,7 @@ private fun TaskCenter(
         )
     }
 
-    GroupTitle("说明")
+    GroupTitle("接入说明")
     SettingsGroup {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -262,7 +262,7 @@ private fun AccountCenter(
         }
     }
 
-    GroupTitle("额度汇总")
+    GroupTitle("可用积分")
     SettingsGroup { QuotaSummary(state) }
 }
 

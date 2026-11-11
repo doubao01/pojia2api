@@ -171,6 +171,8 @@ class UiCopyContractTest {
         assertTrue(accounts.contains("\"编辑上游\""))
         assertTrue(accounts.contains("未绑定模型"))
         assertTrue(taskQuota.contains("正在读取任务…"))
+        assertTrue(taskQuota.contains("GroupTitle(\"可用积分\")"))
+        assertTrue(taskQuota.contains("GroupTitle(\"接入说明\")"))
         assertTrue(accounts.contains("个模型（"))
         assertTrue(accounts.contains("固定策略"))
         assertTrue(accounts.contains("未填写地址"))
