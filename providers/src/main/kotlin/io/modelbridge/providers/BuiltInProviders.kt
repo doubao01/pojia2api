@@ -17,6 +17,7 @@ import io.modelbridge.providers.builtin.TraeProvider
 import io.modelbridge.providers.builtin.WenxinProvider
 import io.modelbridge.providers.builtin.ZhipuProvider
 import io.modelbridge.providers.workbuddy.WorkBuddyProvider
+import io.modelbridge.providers.opencode.OpenCodeProvider
 
 /**
  * 内置供应商清单。
@@ -43,6 +44,7 @@ object BuiltInProviders {
         CatpawProvider(),
         CodeBuddyProvider(),
         WorkBuddyProvider(),
+        OpenCodeProvider(),
         RaccoonProvider(),
         TraeProvider(),
         QoderProvider(),

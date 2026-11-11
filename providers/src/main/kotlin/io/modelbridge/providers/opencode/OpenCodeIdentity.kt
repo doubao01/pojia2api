@@ -39,14 +39,15 @@ object OpenCodeIdentity {
     fun sessionId(seed: String): String {
         val digest = sha256("ses\u0000$seed")
         val head = buildString(12) {
-            val value = ((digest[0].toInt() and 0xFF) shl 28) or
-                ((digest[1].toInt() and 0xFF) shl 20) or
-                ((digest[2].toInt() and 0xFF) shl 12) or
-                ((digest[3].toInt() and 0xFF) shl 4) or
-                ((digest[4].toInt() and 0xFF) shr 4)
-            val shaped = ((value shl 12) or 1).inv() and 0xFFFFFFFFFFFFL
+            val value = ((digest[0].toLong() and 0xFF) shl 28) or
+                ((digest[1].toLong() and 0xFF) shl 20) or
+                ((digest[2].toLong() and 0xFF) shl 12) or
+                ((digest[3].toLong() and 0xFF) shl 4) or
+                ((digest[4].toLong() and 0xFF) shr 4)
+            // 取反后保留低 48 位，得到 UUIDv7 的前 6 字节
+            val shaped = ((value shl 12) or 1L).inv() and 0xFFFFFFFFFFFFL
             for (shift in intArrayOf(40, 32, 24, 16, 8, 0)) {
-                append("%02x".format((shaped shr shift) and 0xFF))
+                append("%02x".format(((shaped shr shift) and 0xFF).toInt()))
             }
         }
         // 后 16 字节按 base62 编码成 14 位，低位先出，最后反转
