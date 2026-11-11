@@ -176,6 +176,10 @@ class UiCopyContractTest {
         assertTrue(routerSource.contains("全部账号处于冷却，本次强制尝试一次"))
         assertTrue(accounts.contains("还没有中转站"))
         assertTrue(accounts.contains("设备授权登录"))
+        // 五种登录方式在供应商页都有入口
+        listOf("\"登录账号\"", "\"+ 添加密钥\"", "\"网页登录\"", "\"OAuth 登录\"", "\"手机号验证码登录\"").forEach {
+            assertTrue(accounts.contains(it), "缺少登录入口：$it")
+        }
         assertTrue(accounts.contains("\"登录账号\""))
         assertTrue(accounts.contains("\"手动添加\""))
         assertTrue(accounts.contains("\"编辑上游\""))
