@@ -17,6 +17,7 @@ import io.modelbridge.providers.builtin.TraeProvider
 import io.modelbridge.providers.builtin.WenxinProvider
 import io.modelbridge.providers.builtin.ZhipuProvider
 import io.modelbridge.providers.workbuddy.WorkBuddyProvider
+import io.modelbridge.providers.kilo.KiloProvider
 import io.modelbridge.providers.opencode.OpenCodeProvider
 
 /**
@@ -45,6 +46,7 @@ object BuiltInProviders {
         CodeBuddyProvider(),
         WorkBuddyProvider(),
         OpenCodeProvider(),
+        KiloProvider(),
         RaccoonProvider(),
         TraeProvider(),
         QoderProvider(),

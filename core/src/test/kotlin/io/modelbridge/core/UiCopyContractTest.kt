@@ -115,6 +115,8 @@ class UiCopyContractTest {
         assertTrue(viewModels.contains("授权超时，请重新发起登录"))
         assertTrue(viewModels.contains("输入手机号获取验证码"))
         assertTrue(viewModels.contains("验证码已发送"))
+        val loomyDialog = File(root, "app/src/main/kotlin/io/modelbridge/app/ui/LoomySmsDialog.kt").readText()
+        assertTrue(loomyDialog.contains("手机号验证码登录"))
         assertTrue(viewModels.contains("验证码不正确，请检查后重试"))
         assertTrue(policy.contains("按「映射后的实际上游模型 ID」精确匹配"))
         assertTrue(policy.contains("三个协议的注入位置不同：chat 作为独立 system 消息前置；responses 写进 instructions；messages 写进 system。客户端原有内容一律保留。"))

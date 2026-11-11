@@ -42,7 +42,7 @@ fun LoomySmsDialog(
             vms.resetLoomyLogin()
             onDismiss()
         },
-        title = { Text("手机号验证码 · Loomy", fontSize = 17.sp) },
+        title = { Text("手机号验证码登录 · Loomy", fontSize = 17.sp) },
         text = {
             Column {
                 Text(
