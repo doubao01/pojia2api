@@ -48,7 +48,7 @@ import kotlinx.serialization.json.putJsonArray
  * 两个实测注意点：
  * - 模型带推理能力，`max_tokens` 过小时思维链会吃光预算、正文为空。所以这里
  *   给未指定上限的请求兜一个下限，避免调用方拿到空响应。
- * - `kilo-auto/*` 与部分 `*-free` 模型在长推理下可能只产出思维链，正文为空；
+ * - `kilo-auto` 系列与部分 `-free` 模型在长推理下可能只产出思维链，正文为空；
  *   属于模型自身行为，不是渠道故障。
  */
 class KiloProvider : Provider {
