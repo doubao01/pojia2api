@@ -26,3 +26,8 @@ Thumbs.db
 
 # 日志
 *.log
+
+# 本地探测脚本（不属于 App 构建）
+tools/
+__pycache__/
+*.pyc
