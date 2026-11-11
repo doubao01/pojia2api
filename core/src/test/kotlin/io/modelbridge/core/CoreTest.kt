@@ -247,6 +247,25 @@ class HealthTrackerTest {
         val tracker = HealthTracker()
         assertEquals(0, tracker.remainingCooldownMillis("unknown"))
     }
+
+    @Test
+    fun `批量冷却只返回仍在冷却中的账号`() = runTest {
+        val now = MutableList(1) { 0L }
+        val tracker = HealthTracker(failureThreshold = 1, cooldownMillis = 60_000, clock = { now[0] })
+        tracker.recordFailure("a1")
+        now[0] = 15_000
+        tracker.recordFailure("a2")
+
+        val cooling = tracker.coolingAccounts()
+        assertEquals(45_000, cooling["a1"])
+        assertEquals(60_000, cooling["a2"])
+
+        now[0] = 60_000
+        assertEquals(mapOf("a2" to 15_000L), tracker.coolingAccounts())
+
+        now[0] = 75_000
+        assertTrue(tracker.coolingAccounts().isEmpty())
+    }
 }
 
 class RouterTest {

@@ -45,6 +45,7 @@ fun TaskQuotaScreen(
     val state by vms.taskQuota.collectAsState()
     val credits by vms.accountCredits.collectAsState()
     val checks by vms.checks.collectAsState()
+    val cooldowns by vms.cooldowns.collectAsState()
     val enabledAccounts = accounts.filter { it.enabled }
     val accountIds = accounts.map { it.id }
     LaunchedEffect(mode, accountIds) {
@@ -53,6 +54,7 @@ fun TaskQuotaScreen(
             AccountCenterMode.Accounts -> {
                 accountIds.forEach { vms.refreshAccountCredit(it) }
                 vms.checkAccountsDaily()
+                vms.refreshCooldowns()
             }
         }
     }
@@ -70,6 +72,7 @@ fun TaskQuotaScreen(
                 accounts = accounts,
                 credits = credits,
                 checks = checks,
+                cooldowns = cooldowns,
                 state = state,
             )
         }
@@ -165,6 +168,7 @@ private fun AccountCenter(
     accounts: List<Account>,
     credits: Map<String, ViewModels.AccountCreditUiState>,
     checks: Map<String, String>,
+    cooldowns: Map<String, Long>,
     state: ViewModels.TaskQuotaUiState,
 ) {
     val expanded = remember { mutableStateMapOf<String, Boolean>() }
@@ -206,6 +210,7 @@ private fun AccountCenter(
                             account = account,
                             credit = credits[account.id],
                             check = checks[account.id],
+                            cooldownMillis = cooldowns[account.id] ?: 0L,
                         )
                     }
                 }
@@ -223,6 +228,7 @@ private fun AccountDetails(
     account: Account,
     credit: ViewModels.AccountCreditUiState?,
     check: String?,
+    cooldownMillis: Long = 0,
 ) {
     val quota = credit?.quota
     val canCredit = vms.supportsAccountCredit(account.providerId)
@@ -254,6 +260,9 @@ private fun AccountDetails(
                 }
                 if (!canCredit && !canCheckIn) add("未接入积分或签到")
                 add(check ?: io.modelbridge.core.AccountCheckStatus.UNKNOWN)
+                if (cooldownMillis > 0) {
+                    add(io.modelbridge.core.AccountCheckStatus.cooldownLabel(cooldownMillis))
+                }
                 quota?.detail?.takeIf { it.isNotBlank() }?.let { add("额度：$it") }
                 quota?.error?.takeIf { it.isNotBlank() }?.let { add(it) }
             }.joinToString(" · "),

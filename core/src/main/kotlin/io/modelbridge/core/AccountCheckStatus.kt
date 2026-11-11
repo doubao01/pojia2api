@@ -16,4 +16,14 @@ object AccountCheckStatus {
 
     /** 缓存和批量连通计数只需要布尔结果，不依赖具体失败文案。 */
     fun cachedStatus(reachable: Boolean): String = if (reachable) OK else FAIL
+
+    /**
+     * 3.10.0 `AccountCenterActivity` 的冷却提示：剩余时间按分钟向上取整，
+     * 至少显示 1 分钟，避免出现「冷却中（0 分钟）」。
+     */
+    fun cooldownLabel(remainingMillis: Long): String {
+        if (remainingMillis <= 0L) return ""
+        val minutes = (remainingMillis + 59_999L) / 60_000L
+        return "冷却中（${minutes.coerceAtLeast(1)} 分钟）"
+    }
 }

@@ -187,6 +187,19 @@ class ViewModels(
     /** 连通性检测结果，按账号 id 索引。 */
     private val _checks = MutableStateFlow<Map<String, String>>(emptyMap())
     val checks: StateFlow<Map<String, String>> = _checks.asStateFlow()
+
+    /** 账号冷却剩余毫秒数，按账号 id 索引；原版显示「冷却中（N 分钟）」。 */
+    private val _cooldowns = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val cooldowns: StateFlow<Map<String, Long>> = _cooldowns.asStateFlow()
+
+    /** 读取当前冷却状态；健康追踪器随设置重建，所以每次现取。 */
+    fun refreshCooldowns() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _cooldowns.value = runCatching {
+                container.healthTracker.coolingAccounts()
+            }.getOrDefault(emptyMap())
+        }
+    }
     private val healthSchedule = AccountHealthSchedule()
 
     /** 一次性提示消息（Toast 用）。 */

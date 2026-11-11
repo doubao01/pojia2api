@@ -153,6 +153,9 @@ class AppContainer(private val app: Application) {
         cooldownMillis = settings.current().cooldownSeconds * 1000L,
     )
 
+    /** 供界面读取账号冷却状态；每次 [applySettings] 后会指向新的实例。 */
+    val healthTracker: HealthTracker get() = health
+
     val catalog = ModelCatalog(registry, accountStore)
 
     var router = Router(registry, accountStore, health)

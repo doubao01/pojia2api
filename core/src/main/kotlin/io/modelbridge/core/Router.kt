@@ -65,6 +65,15 @@ class HealthTracker(
         maxOf(0, s.cooldownUntil - clock())
     }
 
+    /** 批量读取冷却剩余毫秒数；只返回仍在冷却中的账号，便于界面一次刷新。 */
+    suspend fun coolingAccounts(): Map<String, Long> = mutex.withLock {
+        val now = clock()
+        states.mapNotNull { (id, state) ->
+            val remaining = maxOf(0, state.cooldownUntil - now)
+            if (remaining > 0) id to remaining else null
+        }.toMap()
+    }
+
     suspend fun reset() = mutex.withLock { states.clear() }
 }
 

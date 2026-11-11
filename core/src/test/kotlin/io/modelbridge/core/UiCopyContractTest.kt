@@ -189,6 +189,8 @@ class UiCopyContractTest {
         assertTrue(accounts.contains("AccountCheckStatus.isReachable"))
         assertTrue(accounts.contains("AccountCheckStatus.UNKNOWN"))
         assertTrue(taskQuota.contains("AccountCheckStatus.UNKNOWN"))
+        assertTrue(taskQuota.contains("AccountCheckStatus.cooldownLabel"))
+        assertTrue(viewModels.contains("refreshCooldowns"))
         assertTrue(viewModels.contains("连通 "))
         assertTrue(viewModels.contains("没有启用的上游"))
         assertTrue(accounts.contains("vms.checkAllCustomRelays()"))

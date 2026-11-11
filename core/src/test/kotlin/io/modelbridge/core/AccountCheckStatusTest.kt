@@ -24,4 +24,14 @@ class AccountCheckStatusTest {
         assertEquals("连接正常", AccountCheckStatus.cachedStatus(true))
         assertEquals("连不上", AccountCheckStatus.cachedStatus(false))
     }
+
+    @Test
+    fun `cooldown label rounds up to minutes`() {
+        assertEquals("", AccountCheckStatus.cooldownLabel(0))
+        assertEquals("", AccountCheckStatus.cooldownLabel(-1))
+        assertEquals("冷却中（1 分钟）", AccountCheckStatus.cooldownLabel(1))
+        assertEquals("冷却中（1 分钟）", AccountCheckStatus.cooldownLabel(60_000))
+        assertEquals("冷却中（2 分钟）", AccountCheckStatus.cooldownLabel(60_001))
+        assertEquals("冷却中（5 分钟）", AccountCheckStatus.cooldownLabel(5 * 60_000L))
+    }
 }
