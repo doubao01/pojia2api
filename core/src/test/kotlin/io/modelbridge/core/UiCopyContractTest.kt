@@ -150,6 +150,7 @@ class UiCopyContractTest {
         assertTrue(viewModels.contains("\"签到成功：\""))
         assertTrue(viewModels.contains("\"签到失败：\""))
         assertTrue(viewModels.contains("检测正常"))
+        assertTrue(viewModels.contains("凭证刷新异常："))
         assertTrue(accounts.contains("还没有中转站"))
         assertTrue(accounts.contains("个模型（"))
         assertTrue(accounts.contains("固定策略"))

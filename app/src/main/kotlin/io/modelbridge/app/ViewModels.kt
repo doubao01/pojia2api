@@ -276,10 +276,16 @@ class ViewModels(
                 toast("账号不存在")
                 return@launch
             }
-            val refreshed = runCatching {
+            val outcome = runCatching {
                 container.credentialRefresher.refreshAccount(accountId, ignoreBackoff = true)
-            }.getOrDefault(false)
-            if (!refreshed) {
+            }
+            val label = account.label.ifBlank { account.id }
+            outcome.exceptionOrNull()?.let { error ->
+                // 3.10.0 `C/C0008h.java`：「昵称 凭证刷新异常：原因」
+                toast("$label 凭证刷新异常：${error.message ?: error::class.java.simpleName}")
+                return@launch
+            }
+            if (outcome.getOrDefault(false).not()) {
                 toast("凭证仍有效，未触发续期")
                 return@launch
             }
