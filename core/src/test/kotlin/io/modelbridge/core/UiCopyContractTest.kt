@@ -118,6 +118,7 @@ class UiCopyContractTest {
         assertTrue(policy.contains("三个协议的注入位置不同：chat 作为独立 system 消息前置；responses 写进 instructions；messages 写进 system。客户端原有内容一律保留。"))
         assertTrue(policy.contains("策略正文只存在本机，不会上传。"))
         assertTrue(policy.contains("策略正文（可直接粘贴）"))
+        assertTrue(policy.contains("确定删除「"))
         val openAiProvider = File(root, "providers/src/main/kotlin/io/modelbridge/providers/OpenAiCompatibleProvider.kt").readText()
         assertTrue(openAiProvider.contains("模型响应不是合法 JSON"))
         assertTrue(openAiProvider.contains("模型响应里找不到模型数组"))

@@ -193,7 +193,7 @@ private fun PolicyEditor(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("删除策略") },
-            text = { Text("删除「${draft.name}」？绑定该策略的账号将不再注入它。") },
+            text = { Text("确定删除「${draft.name}」？绑定该策略的账号将不再注入它。") },
             confirmButton = { TextButton(onClick = onDelete) { Text("删除", color = AppStyle.Accent) } },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } },
         )
