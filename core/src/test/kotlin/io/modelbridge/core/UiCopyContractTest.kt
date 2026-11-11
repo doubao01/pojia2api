@@ -175,6 +175,8 @@ class UiCopyContractTest {
         assertTrue(homeLayout.contains("StatDisplay.percent(hitRate)"))
         assertTrue(homeLayout.contains("StatDisplay.compact(success)"))
         assertTrue(homeLayout.contains("StatDisplay.compact(failed)"))
+        assertTrue(homeLayout.contains("scopeLabel = if (settings.allowLan) \"局域网\" else \"仅本机\""))
+        assertTrue(homeLayout.contains("text = scopeLabel"))
         assertTrue(homeLayout.contains("vms.runner.stats.collectAsState()"))
         assertTrue(viewModels.contains("正在检测 "))
         assertTrue(viewModels.contains("个上游…"))

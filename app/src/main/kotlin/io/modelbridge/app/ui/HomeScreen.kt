@@ -83,6 +83,7 @@ fun HomeScreen(
             models = models.size,
             success = ok,
             failed = fail,
+            scopeLabel = if (settings.allowLan) "局域网" else "仅本机",
             onToggle = { if (running) vms.stopGateway() else vms.startGateway() },
         )
 
@@ -172,6 +173,7 @@ private fun StatusCard(
     models: Int,
     success: Long,
     failed: Long,
+    scopeLabel: String,
     onToggle: () -> Unit,
 ) {
     Card(
@@ -198,6 +200,12 @@ private fun StatusCard(
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AppStyle.BodyText,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f),
+                )
+                Text(
+                    text = scopeLabel,
+                    fontSize = 12.sp,
+                    color = AppStyle.Accent,
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
