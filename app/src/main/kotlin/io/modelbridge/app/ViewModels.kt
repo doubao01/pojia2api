@@ -265,6 +265,9 @@ class ViewModels(
     fun supportsAccountCheckIn(providerId: String): Boolean =
         container.accountServices.supports(providerId, AccountCapability.CheckIn)
 
+    fun supportsAccountTasks(providerId: String): Boolean =
+        container.accountServices.supports(providerId, AccountCapability.Tasks)
+
     /** 原版账号管理页的「刷新凭证」：按账号立即尝试续期，结果如实提示。 */
     fun refreshAccountCredential(accountId: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -364,11 +367,13 @@ class ViewModels(
         }
     }
 
-    private fun runAccountAction(capability: AccountCapability) {
+    private fun runAccountAction(capability: AccountCapability, providerId: String? = null) {
         if (_taskQuota.value.busy) return
         _taskQuota.value = _taskQuota.value.copy(busy = true)
         viewModelScope.launch(Dispatchers.IO) {
-            val accounts = container.accountStore.all().filter { it.enabled }
+            val accounts = container.accountStore.all()
+                .filter { it.enabled }
+                .filter { providerId == null || it.providerId == providerId }
             val results = accounts.map { account ->
                 account.label to when (capability) {
                     AccountCapability.CheckIn -> container.accountServices.checkIn(account)
@@ -405,6 +410,26 @@ class ViewModels(
 
     fun checkInAllAccounts() = runAccountAction(AccountCapability.CheckIn)
     fun claimAllAccountTasks() = runAccountAction(AccountCapability.Tasks)
+
+    /** 原版任务中心按供应商分组的「一键签到」。 */
+    fun checkInProvider(providerId: String) =
+        runAccountAction(AccountCapability.CheckIn, providerId)
+
+    /** 原版任务中心按供应商分组的「一键任务」。 */
+    fun claimProviderTasks(providerId: String) =
+        runAccountAction(AccountCapability.Tasks, providerId)
+
+    /** 任务页每个供应商分组的签到进度，用于「今日已签 N / M」。 */
+    fun checkInProgress(providerId: String): Pair<Int, Int> {
+        val now = System.currentTimeMillis()
+        val accounts = container.accountStore.byProvider(providerId).filter { it.enabled }
+        if (accounts.isEmpty()) return 0 to 0
+        val done = accounts.count {
+            container.accountServices.supports(it.providerId, AccountCapability.CheckIn) &&
+                container.dailyCheckinStore.isCheckedIn(it.providerId, it.id, now)
+        }
+        return done to accounts.size
+    }
 
     // ---------- 模型 ----------
 

@@ -115,7 +115,51 @@ private fun TaskCenter(
             hint = "$enabledCount 个启用账号",
             onClick = { if (!state.busy) vms.refreshTaskQuota() },
         )
-        RowDivider()
+    }
+
+    // 原版任务中心按供应商分组：每组显示账号数、今日签到进度与组内一键动作。
+    val groups = vms.providerGroups.collectAsState().value
+    groups.forEach { group ->
+        val accounts = group.accounts.filter { it.enabled }
+        if (accounts.isEmpty()) return@forEach
+        val canCheckIn = vms.supportsAccountCheckIn(group.provider.id)
+        val canTasks = vms.supportsAccountTasks(group.provider.id)
+        if (!canCheckIn && !canTasks) return@forEach
+        val (done, total) = vms.checkInProgress(group.provider.id)
+        GroupTitle(group.provider.displayName)
+        SettingsGroup {
+            TaskRow(
+                label = group.provider.displayName,
+                value = "${accounts.size} 个账号",
+                hint = when {
+                    !canCheckIn -> "该供应商只支持领取任务"
+                    done >= total && total > 0 -> "今日已全部签到"
+                    else -> "今日已签 $done / $total"
+                },
+            )
+            if (canCheckIn) {
+                RowDivider()
+                ActionRow(
+                    label = "一键签到",
+                    value = if (state.busy) "正在签到…" else "执行",
+                    hint = "仅该供应商",
+                    onClick = { if (!state.busy) vms.checkInProvider(group.provider.id) },
+                )
+            }
+            if (canTasks) {
+                RowDivider()
+                ActionRow(
+                    label = "一键任务",
+                    value = if (state.busy) "正在执行…" else "执行",
+                    hint = "仅该供应商",
+                    onClick = { if (!state.busy) vms.claimProviderTasks(group.provider.id) },
+                )
+            }
+        }
+    }
+
+    GroupTitle("任务列表")
+    SettingsGroup {
         if (state.tasks.isEmpty()) {
             TaskRow(
                 "任务列表",
