@@ -220,9 +220,9 @@ fun SettingsScreen(vms: ViewModels) {
         SettingsGroup {
             InfoRow("应用", "网关管家（ModelBridge 重写实现）", mono = false)
             RowDivider()
-            InfoRow("版本", "1.0.0")
+            InfoRow("版本", ABOUT_VERSION)
             RowDivider()
-            InfoRow("原项目参考署名", ABOUT_AUTHOR, mono = false)
+            InfoRow("作者", ABOUT_AUTHOR, mono = false)
             RowDivider()
             InfoRow("许可证", "Apache-2.0")
             RowDivider()
@@ -261,3 +261,6 @@ fun SettingsScreen(vms: ViewModels) {
 
 /** 作者署名，与原版一致。 */
 private const val ABOUT_AUTHOR = "MT一束挽风"
+
+/** 原版关于页显示的版本号。 */
+private const val ABOUT_VERSION = "3.10.0"
