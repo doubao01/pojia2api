@@ -102,7 +102,7 @@ fun AccountsScreen(vms: ViewModels) {
                 hint = "保存为 JSON 文件",
                 onClick = {
                     if (accounts.isEmpty()) {
-                        vms.toast("还没有登录账号")
+                        vms.toast("还没有账号")
                     } else {
                         transfer.exportAccounts(accounts)
                     }
@@ -411,14 +411,14 @@ private fun ProviderCard(
             ) {
                 when (group.provider.authKind) {
                     AuthKind.None -> {
-                        TextButton(onClick = onAdd) { Text("添加账号", fontSize = 13.sp) }
+                        TextButton(onClick = onAdd) { Text("登录账号", fontSize = 13.sp) }
                     }
                     AuthKind.ApiKey -> {
                         TextButton(onClick = onAdd) { Text("添加密钥", fontSize = 13.sp) }
                     }
                     AuthKind.Cookie -> {
                         TextButton(onClick = onWebLogin) { Text("网页登录", fontSize = 13.sp) }
-                        TextButton(onClick = onAdd) { Text("手动填 Cookie", fontSize = 13.sp) }
+                        TextButton(onClick = onAdd) { Text("手动添加", fontSize = 13.sp) }
                     }
                     AuthKind.OAuth -> {
                         if (group.provider.id == "qoder" || group.provider.id == "codebuddy") {
@@ -496,7 +496,7 @@ private fun AccountRow(
                     fontSize = 12.sp,
                 )
             }
-            TextButton(onClick = onEdit) { Text("编辑", fontSize = 12.sp) }
+            TextButton(onClick = onEdit) { Text("编辑上游", fontSize = 12.sp) }
             val refreshing = account.id in vms.refreshingCredentials.collectAsState().value
             TextButton(
                 enabled = !refreshing,
@@ -565,7 +565,7 @@ private fun AccountRow(
             text = {
                 Column {
                     TextButton(onClick = { vms.bindPolicy(account.id, null); selectPolicy = false }) {
-                        Text("不固定，按模型自动匹配")
+                        Text("未绑定模型")
                     }
                     policies.forEach { policy ->
                         TextButton(onClick = { vms.bindPolicy(account.id, policy.id); selectPolicy = false }) {
