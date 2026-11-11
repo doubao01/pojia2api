@@ -422,7 +422,7 @@ private fun ProviderCard(
                     }
                     AuthKind.OAuth -> {
                         if (group.provider.id == "qoder" || group.provider.id == "codebuddy") {
-                            TextButton(onClick = onDeviceLogin) { Text("设备授权", fontSize = 13.sp) }
+                            TextButton(onClick = onDeviceLogin) { Text("设备授权登录", fontSize = 13.sp) }
                         } else {
                             TextButton(onClick = onWebLogin) { Text("OAuth 登录", fontSize = 13.sp) }
                         }

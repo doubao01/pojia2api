@@ -165,6 +165,7 @@ class UiCopyContractTest {
         val routerSource = File(root, "core/src/main/kotlin/io/modelbridge/core/Router.kt").readText()
         assertTrue(routerSource.contains("全部账号处于冷却，本次强制尝试一次"))
         assertTrue(accounts.contains("还没有中转站"))
+        assertTrue(accounts.contains("设备授权登录"))
         assertTrue(accounts.contains("个模型（"))
         assertTrue(accounts.contains("固定策略"))
         assertTrue(accounts.contains("未填写地址"))
