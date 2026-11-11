@@ -486,6 +486,9 @@ private fun AccountRow(
                 )
             }
             TextButton(onClick = onEdit) { Text("编辑", fontSize = 12.sp) }
+            TextButton(onClick = { vms.refreshAccountCredential(account.id) }) {
+                Text("刷新凭证", fontSize = 12.sp)
+            }
             TextButton(onClick = { selectPolicy = true }) { Text("策略", fontSize = 12.sp) }
             TextButton(onClick = { confirmDelete = true }) {
                 Text("删除", fontSize = 12.sp, color = AppStyle.Accent)

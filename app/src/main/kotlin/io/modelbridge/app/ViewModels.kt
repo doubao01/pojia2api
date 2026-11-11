@@ -9,6 +9,7 @@ import io.modelbridge.app.service.ServiceManager
 import io.modelbridge.app.ui.ProviderGroup
 import io.modelbridge.core.Account
 import io.modelbridge.core.AccountCheckStatus
+import io.modelbridge.core.AccountStatusFormat
 import io.modelbridge.core.ProviderRegistry
 import io.modelbridge.core.ScannedGateway
 import io.modelbridge.core.ScannedGatewayParser
@@ -263,6 +264,35 @@ class ViewModels(
 
     fun supportsAccountCheckIn(providerId: String): Boolean =
         container.accountServices.supports(providerId, AccountCapability.CheckIn)
+
+    /** 原版账号管理页的「刷新凭证」：按账号立即尝试续期，结果如实提示。 */
+    fun refreshAccountCredential(accountId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val account = container.accountStore.find(accountId)
+            if (account == null) {
+                toast("账号不存在")
+                return@launch
+            }
+            val refreshed = runCatching {
+                container.credentialRefresher.refreshAccount(accountId, ignoreBackoff = true)
+            }.getOrDefault(false)
+            if (!refreshed) {
+                toast("凭证仍有效，未触发续期")
+                return@launch
+            }
+            refreshModels()
+            val latest = container.accountStore.find(accountId)
+            val expiry = latest?.authExpiresAtMillis ?: 0L
+            toast(
+                if (expiry > 0) {
+                    AccountStatusFormat.expiryLabel(expiry, System.currentTimeMillis())
+                        .ifBlank { "凭证已刷新" }
+                } else {
+                    "凭证已刷新"
+                },
+            )
+        }
+    }
 
     /** 原版账号管理页的「刷新积分」：单账号请求真实额度，失败保留错误文案。 */
     fun refreshAccountCredit(accountId: String) {

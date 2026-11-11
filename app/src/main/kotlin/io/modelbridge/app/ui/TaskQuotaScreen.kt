@@ -289,6 +289,12 @@ private fun AccountDetails(
                     onClick = { vms.checkInAccount(account.id) },
                 ) { Text("签到", fontSize = 12.sp) }
             }
+            TextButton(onClick = { vms.refreshAccountCredential(account.id) }) {
+                Text("刷新凭证", fontSize = 12.sp)
+            }
+            TextButton(onClick = { vms.toggleAccount(account.id, !account.enabled) }) {
+                Text(if (account.enabled) "禁用" else "启用", fontSize = 12.sp)
+            }
         }
     }
 }
