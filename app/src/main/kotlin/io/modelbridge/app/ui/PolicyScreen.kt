@@ -159,7 +159,7 @@ private fun PolicyEditor(
                 PolicyTextInput("策略名称", name, { name = it }, singleLine = true)
                 PolicyTextInput("绑定模型（留空 = 通用，对所有模型生效）", models, { models = it })
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("策略正文", fontSize = 12.5.sp, color = AppStyle.SubtitleText, modifier = Modifier.weight(1f))
+                    Text("策略正文（可直接粘贴）", fontSize = 12.5.sp, color = AppStyle.SubtitleText, modifier = Modifier.weight(1f))
                     TextButton(onClick = { clipboard.getText()?.let { instruction = it.text } }) { Text("粘贴") }
                     TextButton(onClick = { instruction = "" }) { Text("清空") }
                 }
