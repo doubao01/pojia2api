@@ -110,6 +110,28 @@ fun HomeScreen(
             )
         }
 
+        // 快捷入口，对应原版首页底部的「账号管理 / 任务管理 / 策略管理」
+        SectionTitle("管理")
+        SettingsGroup {
+            ActionRow(
+                label = "账号管理",
+                hint = "查看所有供应商已登录的账号",
+                onClick = onOpenAccounts,
+            )
+            RowDivider()
+            ActionRow(
+                label = "任务管理",
+                hint = "签到、任务、额度一目了然",
+                onClick = onOpenTasks,
+            )
+            RowDivider()
+            ActionRow(
+                label = "策略管理",
+                hint = "按模型注入正文，转发时前置到请求里",
+                onClick = onOpenPolicies,
+            )
+        }
+
         // 接入信息
         SectionTitle("Agent 接入地址")
         val lanAddress = remember(running, settings.allowLan) {
@@ -142,27 +164,6 @@ fun HomeScreen(
             )
         }
 
-        // 快捷入口，对应原版首页底部的「账号管理 / 任务管理 / 策略管理」
-        SectionTitle("管理")
-        SettingsGroup {
-            ActionRow(
-                label = "账号管理",
-                hint = "查看所有供应商已登录的账号",
-                onClick = onOpenAccounts,
-            )
-            RowDivider()
-            ActionRow(
-                label = "任务管理",
-                hint = "签到、任务、额度一目了然",
-                onClick = onOpenTasks,
-            )
-            RowDivider()
-            ActionRow(
-                label = "策略管理",
-                hint = "按模型注入正文，转发时前置到请求里",
-                onClick = onOpenPolicies,
-            )
-        }
     }
 }
 

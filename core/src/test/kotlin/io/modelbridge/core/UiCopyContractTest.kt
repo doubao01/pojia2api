@@ -204,6 +204,14 @@ class UiCopyContractTest {
         assertTrue(homeLayout.contains("StatDisplay.compact(success)"))
         assertTrue(homeLayout.contains("StatDisplay.compact(failed)"))
         assertTrue(homeLayout.contains("scopeLabel = if (settings.allowLan) \"局域网\" else \"仅本机\""))
+        // 原版首页顺序：概览 → 管理 → 接入地址 → 接入说明
+        val order = listOf(
+            "SectionTitle(\"概览\")",
+            "SectionTitle(\"管理\")",
+            "SectionTitle(\"Agent 接入地址\")",
+            "SectionTitle(\"接入说明\")",
+        ).map { homeLayout.indexOf(it) }
+        assertTrue(order.all { it >= 0 } && order == order.sorted(), "首页章节顺序应为概览→管理→接入地址→接入说明：$order")
         assertTrue(homeLayout.contains("text = scopeLabel"))
         assertTrue(homeLayout.contains("vms.runner.stats.collectAsState()"))
         assertTrue(viewModels.contains("正在检测 "))
