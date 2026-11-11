@@ -29,4 +29,30 @@ class AccountPersistenceTest {
         val decoded = json.decodeFromString(serializer, encoded)
         assertEquals(accounts, decoded)
     }
+
+    @Test
+    fun `multi key and identity metadata round trip`() {
+        val account = Account(
+            id = "relay-1",
+            providerId = "custom",
+            label = "本机网关",
+            credential = Credential.ApiKey("first-key"),
+            baseUrl = "http://127.0.0.1:8080/v1",
+            priority = 3,
+            disabledModels = setOf("demo-2"),
+            authRegion = "cn",
+            authUid = "uid-1",
+            authTenantId = "tenant-1",
+            authDomain = "www.codebuddy.cn",
+            authNickname = "昵称",
+            authTokenKind = "Bearer",
+            authExpiresAtMillis = 1_800_000_000_000L,
+            fixedPolicyId = "policy-9",
+            extraApiKeys = listOf("second-key", "third-key"),
+        )
+        val json = Json { encodeDefaults = true }
+        val encoded = json.encodeToString(Account.serializer(), account)
+        val decoded = json.decodeFromString(Account.serializer(), encoded)
+        assertEquals(account, decoded)
+    }
 }
