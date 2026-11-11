@@ -491,7 +491,7 @@ class ViewModels(
     private var deviceLoginClient: DeviceAuthClient? = null
 
     fun beginDeviceLogin(providerId: String, region: String = "cn") {
-        if (providerId != "qoder" && providerId != "codebuddy") {
+        if (providerId !in setOf("qoder", "codebuddy", "workbuddy")) {
             toast("该供应商暂未接入设备授权")
             return
         }

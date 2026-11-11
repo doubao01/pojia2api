@@ -16,8 +16,10 @@ import kotlinx.serialization.json.JsonPrimitive
 class WorkBuddyAccountService(
     http: HttpClient,
     clockMillis: () -> Long = System::currentTimeMillis,
+    /** 复用同一套签到/额度协议的供应商 id；桌面端接入用 `workbuddy`。 */
+    providerId: String = "codebuddy",
 ) : HttpProviderAccountService(
-    providerId = "codebuddy",
+    providerId = providerId,
     http = http,
     capabilities = setOf(
         AccountCapability.CreditRefresh,

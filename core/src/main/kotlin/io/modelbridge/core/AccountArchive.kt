@@ -276,7 +276,10 @@ object AccountArchive {
     }
 
     private fun normalizeProvider(value: String): String = when (value.trim().lowercase()) {
-        "", "workbuddy", "codebuddy" -> if (value.isBlank()) "" else "codebuddy"
+        "" -> ""
+        // 显式 workbuddy 保持独立，避免和普通 CodeBuddy 账号混在同一供应商下。
+        "workbuddy" -> "workbuddy"
+        "codebuddy" -> "codebuddy"
         "qoder" -> "qoder"
         "loomy" -> "loomy"
         else -> value.trim().lowercase()

@@ -106,6 +106,8 @@ class AppContainer(private val app: Application) {
     /** 设备授权刷新客户端；公开构建没有 Qoder 客户端标识时仍保留 WorkBuddy 刷新。 */
     val deviceAuthClients: Map<String, DeviceAuthClient> = buildMap {
         put("codebuddy", WorkBuddyDeviceAuth(httpClient))
+        // 桌面端接入复用同一套设备授权刷新协议。
+        put("workbuddy", WorkBuddyDeviceAuth(httpClient))
         val ids = QoderClientIds(
             cn = BuildConfig.QODER_CLIENT_ID_CN,
             global = BuildConfig.QODER_CLIENT_ID_GLOBAL,
@@ -131,6 +133,7 @@ class AppContainer(private val app: Application) {
     val accountServices = AccountServiceRegistry(
         services = listOf(
             WorkBuddyAccountService(httpClient),
+            WorkBuddyAccountService(httpClient, providerId = "workbuddy"),
             QoderAccountService(httpClient),
             LoomyAccountService(httpClient),
             CatpawAccountService(httpClient),

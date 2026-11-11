@@ -169,6 +169,17 @@ class AccountArchiveTest {
     }
 
     @Test
+    fun `explicit workbuddy provider is not merged into codebuddy`() {
+        val raw = """
+            [{"provider":"workbuddy","uid":"u1","nickname":"桌面端",
+              "secret":{"accessToken":"token","refreshToken":"refresh","domain":"www.codebuddy.cn"}}]
+        """.trimIndent()
+
+        val account = AccountArchive.parseAccounts(raw).single()
+        assertEquals("workbuddy", account.providerId)
+    }
+
+    @Test
     fun `malformed or empty archive is rejected`() {
         val empty = runCatching { AccountArchive.parseAccounts("[]") }.exceptionOrNull()
         val malformed = runCatching { AccountArchive.parseAccounts("not-json") }.exceptionOrNull()
