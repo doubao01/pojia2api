@@ -89,6 +89,7 @@ fun HomeScreen(
             failed = fail,
             scopeLabel = if (settings.allowLan) "局域网" else "仅本机",
             lanAddress = lanAddress,
+            allowLan = settings.allowLan,
             onToggle = { if (running) vms.stopGateway() else vms.startGateway() },
         )
 
@@ -178,6 +179,7 @@ private fun StatusCard(
     failed: Long,
     scopeLabel: String,
     lanAddress: java.net.InetAddress?,
+    allowLan: Boolean,
     onToggle: () -> Unit,
 ) {
     Card(
@@ -220,7 +222,7 @@ private fun StatusCard(
                     append(
                         when {
                             !running -> "网关已停止"
-                            settings.allowLan -> LanAddresses.baseUrl(lanAddress, port)
+                            allowLan -> LanAddresses.baseUrl(lanAddress, port)
                                 ?: "未检测到局域网地址"
                             else -> "http://127.0.0.1:$port/v1"
                         },
