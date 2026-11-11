@@ -339,7 +339,10 @@ class ViewModels(
                     container.dailyCheckinStore.isCheckedIn(account.providerId, account.id, now),
                 busy = false,
             ))
-            toast(result.message)
+            // 3.10.0 `C/C0007g.java`：「昵称 签到成功：…」/「昵称 签到失败：…」
+            val label = account?.label.orEmpty().ifBlank { "账号" }
+            val detail = result.message.ifBlank { if (result.ok) "已完成" else "签到失败" }
+            toast("$label ${if (result.ok) "签到成功：" else "签到失败："}$detail")
         }
     }
 
@@ -841,6 +844,12 @@ class ViewModels(
                 message = result,
             )
             _checks.value = _checks.value + (account.id to result)
+            // 3.10.0 `C/C0007g.java`：「昵称 检测正常」或带失败原因
+            val label = account.label.ifBlank { account.id }
+            toast(
+                if (AccountCheckStatus.isReachable(result)) "$label 检测正常"
+                else "$label $result",
+            )
         }
     }
 

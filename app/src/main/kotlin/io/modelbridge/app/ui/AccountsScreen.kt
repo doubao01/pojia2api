@@ -384,7 +384,7 @@ private fun ProviderCard(
             // ---- 账号列表 ----
             if (group.accounts.isEmpty()) {
                 Text(
-                    text = "还没有登录账号",
+                    text = "${group.provider.displayName} 还没有账号",
                     fontSize = 12.sp,
                     color = AppStyle.SubtitleText,
                     modifier = Modifier.padding(top = 8.dp),
