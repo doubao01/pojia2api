@@ -76,6 +76,10 @@ fun HomeScreen(
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
+        val lanAddress = remember(running, settings.allowLan) {
+            if (running && settings.allowLan) LanAddresses.pick(LanAddresses.current()) else null
+        }
+
         // 状态卡 + 启停按钮
         StatusCard(
             running = running,
@@ -84,6 +88,7 @@ fun HomeScreen(
             success = ok,
             failed = fail,
             scopeLabel = if (settings.allowLan) "局域网" else "仅本机",
+            lanAddress = lanAddress,
             onToggle = { if (running) vms.stopGateway() else vms.startGateway() },
         )
 
@@ -134,9 +139,6 @@ fun HomeScreen(
 
         // 接入信息
         SectionTitle("Agent 接入地址")
-        val lanAddress = remember(running, settings.allowLan) {
-            if (running && settings.allowLan) LanAddresses.pick(LanAddresses.current()) else null
-        }
         val lanUrl = when {
             !running -> "网关已停止"
             !settings.allowLan -> "仅本机可访问"
@@ -175,6 +177,7 @@ private fun StatusCard(
     success: Long,
     failed: Long,
     scopeLabel: String,
+    lanAddress: java.net.InetAddress?,
     onToggle: () -> Unit,
 ) {
     Card(
@@ -213,7 +216,15 @@ private fun StatusCard(
 
             Text(
                 text = buildString {
-                    append(if (running) "监听端口 $port" else "点击下方按钮启动")
+                    // 3.10.0 `D/d.v(端口, 监听地址)`：状态卡直接显示可访问的接入地址。
+                    append(
+                        when {
+                            !running -> "网关已停止"
+                            settings.allowLan -> LanAddresses.baseUrl(lanAddress, port)
+                                ?: "未检测到局域网地址"
+                            else -> "http://127.0.0.1:$port/v1"
+                        },
+                    )
                     append(" · 可用模型 $models")
                     append(" · 成功 ${StatDisplay.compact(success)}")
                     append(" · 失败 ${StatDisplay.compact(failed)}")
