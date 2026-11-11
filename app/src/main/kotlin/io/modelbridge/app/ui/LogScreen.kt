@@ -114,10 +114,10 @@ private fun LogCard(entry: LogEntry) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = time,
+                    text = "$time ${LogLevel.label(entry.status)}",
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace,
-                    color = AppStyle.SubtitleText,
+                    color = statusColor,
                 )
                 Text(
                     text = "  ${entry.method} ${entry.path}",
@@ -134,7 +134,6 @@ private fun LogCard(entry: LogEntry) {
                 )
             }
             val details = buildList {
-                add(LogLevel.label(entry.status))
                 if (entry.costMillis > 0) add("${entry.costMillis} ms")
                 entry.upstreamId?.takeIf { it.isNotBlank() }?.let { add("上游：$it") }
                 entry.message?.takeIf { it.isNotBlank() }?.let { add(it) }
