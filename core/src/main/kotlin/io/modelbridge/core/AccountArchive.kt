@@ -152,7 +152,7 @@ object AccountArchive {
             label = nickname.ifBlank { "$providerId 账号" },
             enabled = obj.boolean("enabled", default = true),
             credential = credential,
-            baseUrl = obj.string("baseUrl"),
+            baseUrl = obj.string("baseUrl").ifBlank { merged.string("baseUrl", "base_url") },
             priority = obj.long("priority").toInt(),
             disabledModels = obj.stringSet("disabledModels"),
             authRegion = realm,
@@ -163,8 +163,26 @@ object AccountArchive {
             authTokenKind = tokenKind,
             authExpiresAtMillis = expiresAtMillis,
             fixedPolicyId = obj.string("fixedPolicyId").takeIf { it.isNotBlank() },
-            extraApiKeys = obj.stringSet("extraApiKeys").toList(),
+            extraApiKeys = extraApiKeysFrom(merged, obj, (credential as? Credential.ApiKey)?.key),
         )
+    }
+
+    /**
+     * 多密钥兼容三种写法：ModelBridge 的 `extraApiKeys`、原版数组的 `apiKeys`，
+     * 以及 secret 对象里合并进来的同名字段。主密钥会被排除，避免重复。
+     */
+    private fun extraApiKeysFrom(
+        merged: JsonObject,
+        obj: JsonObject,
+        primaryKey: String?,
+    ): List<String> {
+        val fromExtra = merged.stringSet("extraApiKeys") + obj.stringSet("extraApiKeys")
+        val fromApiKeys = (merged["apiKeys"] as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) }
+            .orEmpty()
+        return (fromExtra + fromApiKeys)
+            .filter { it != primaryKey }
+            .distinct()
     }
 
     private fun exportAccount(account: Account): JsonObject {
@@ -208,6 +226,19 @@ object AccountArchive {
         fields["enterpriseId"] = JsonPrimitive(account.authTenantId)
         fields["nickname"] = JsonPrimitive(account.authNickname.ifBlank { account.label })
         fields["tokenKind"] = JsonPrimitive(account.authTokenKind)
+        if (account.baseUrl.isNotBlank()) {
+            fields["baseUrl"] = JsonPrimitive(account.baseUrl)
+        }
+        // 原版数组格式的密钥放在 secret 里；多密钥写成 apiKeys 数组，
+        // 主密钥排第一，导入端按同一规则还原（见 parseLegacyUpstream）。
+        if (account.extraApiKeys.isNotEmpty()) {
+            val primary = (account.credential as? Credential.ApiKey)?.key
+            val all = buildList {
+                primary?.takeIf { it.isNotBlank() }?.let { add(it) }
+                addAll(account.extraApiKeys)
+            }
+            fields["apiKeys"] = JsonArray(all.map { JsonPrimitive(it) })
+        }
         if (account.authExpiresAtMillis > 0) {
             fields["expiresAtMillis"] = JsonPrimitive(account.authExpiresAtMillis)
             fields["expiresAt"] = JsonPrimitive(account.authExpiresAtMillis / 1000L)

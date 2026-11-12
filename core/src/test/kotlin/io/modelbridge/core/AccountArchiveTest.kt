@@ -2,6 +2,12 @@ package io.modelbridge.core
 
 import io.modelbridge.spi.Credential
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -166,6 +172,33 @@ class AccountArchiveTest {
         assertEquals("rule", policy.instruction)
         assertEquals(listOf("demo"), policy.models)
         assertNull(AccountArchive.parseLegacyProfile(encryptedProfile))
+    }
+
+    @Test
+    fun `multi api keys survive the legacy four field array round trip`() {
+        val relay = Account(
+            id = "relay-1",
+            providerId = "custom",
+            label = "本机网关",
+            credential = Credential.ApiKey("first-key"),
+            baseUrl = "http://127.0.0.1:8080/v1",
+            extraApiKeys = listOf("second-key", "third-key"),
+        )
+
+        // 导出后剥离成原版四项数组：provider/uid/nickname/secret
+        val exported = Json.parseToJsonElement(AccountArchive.export(listOf(relay))).jsonArray
+        val item = exported.single().jsonObject
+        val legacy = buildJsonObject {
+            put("provider", item["provider"] ?: JsonPrimitive("custom"))
+            put("uid", JsonPrimitive("relay-1"))
+            put("nickname", JsonPrimitive("本机网关"))
+            put("secret", item["secret"] ?: JsonObject(emptyMap()))
+        }
+
+        val parsed = AccountArchive.parseAccounts(legacy.toString()).single()
+        assertEquals(Credential.ApiKey("first-key"), parsed.credential)
+        assertEquals(listOf("second-key", "third-key"), parsed.extraApiKeys)
+        assertEquals("http://127.0.0.1:8080/v1", parsed.baseUrl)
     }
 
     @Test
