@@ -73,6 +73,7 @@ fun HomeScreen(
     val avgCost = stats.value.averageCostMillis
     val hitRate = stats.value.cacheHitRate
     val (tokenIn, tokenOut) = vms.runner.tokenTotals()
+    val lastError by vms.runner.lastError.collectAsState()
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -92,6 +93,16 @@ fun HomeScreen(
             allowLan = settings.allowLan,
             onToggle = { if (running) vms.stopGateway() else vms.startGateway() },
         )
+
+        // 原版 `D.d.v` 之后会在状态区显示「启动失败：原因」，这里同样保留可见。
+        lastError?.let { error ->
+            Text(
+                text = "启动失败：$error",
+                fontSize = 12.5.sp,
+                color = AppStyle.Accent,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
 
         // 概览统计：原版 3.9.3 `MainActivity.k()` 是每行两个 key/value。
         SectionTitle("概览")

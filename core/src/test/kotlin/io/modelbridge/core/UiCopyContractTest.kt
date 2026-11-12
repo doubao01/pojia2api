@@ -249,6 +249,8 @@ class UiCopyContractTest {
         ).map { homeLayout.indexOf(it) }
         assertTrue(order.all { it >= 0 } && order == order.sorted(), "首页章节顺序应为概览→管理→接入地址→接入说明：$order")
         assertTrue(homeLayout.contains("text = scopeLabel"))
+        assertTrue(homeLayout.contains("vms.runner.lastError.collectAsState()"))
+        assertTrue(homeLayout.contains("启动失败："))
         assertTrue(!homeLayout.contains("点击下方按钮启动"))
         assertTrue(homeLayout.contains("lanAddress: java.net.InetAddress?"))
         assertTrue(homeLayout.contains("vms.runner.stats.collectAsState()"))
