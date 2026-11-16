@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.modelbridge.app.BuildConfig
 import io.modelbridge.app.ConfigTransfer
 import io.modelbridge.app.ViewModels
 import io.modelbridge.app.prefs.GatewaySettings
@@ -234,7 +235,7 @@ fun SettingsScreen(
         // ---------------- 关于 ----------------
         GroupTitle("关于")
         SettingsGroup {
-            InfoRow("版本", ABOUT_VERSION)
+            InfoRow("版本", BuildConfig.VERSION_NAME)
             RowDivider()
             InfoRow("作者", ABOUT_AUTHOR, mono = false)
             RowDivider()
@@ -280,5 +281,3 @@ fun SettingsScreen(
 /** 作者署名，与原版一致。 */
 private const val ABOUT_AUTHOR = "MT一束挽风"
 
-/** 原版关于页显示的版本号。 */
-private const val ABOUT_VERSION = "3.10.0"

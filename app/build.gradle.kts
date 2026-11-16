@@ -14,7 +14,8 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.0"
+        // 与原版「关于」页显示的版本号一致，避免 APK 版本和界面版本对不上。
+        versionName = "3.10.0"
     }
 
     buildTypes {

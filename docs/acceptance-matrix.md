@@ -41,7 +41,7 @@
 | 去客户端指纹 | `ClientFingerprintStripper` 按 3.10.0 dex 与 3.9.3 `z/g.java` 规则清理计费头、Claude/Codex/ZCode/DS Harness 身份句、模板句和空模板参数；设置页补齐原版风险说明与「只清理对话内容里的客户端痕迹…」说明、开启/关闭 Toast；身份句按原版替换为中性表述而不误删；网关记录规则级诊断，解析失败回退原文；模型和工具参数保留 | `ClientFingerprintStripperTest`（9 项）、`UiCopyContractTest`、CI APK；请求头指纹规则因静态规则表被 JADX 截断尚未完整复刻 |
 | `@上游昵称` 定向路由 | 模型名后缀匹配供应商 ID/显示名/账号备注；只走指定上游，上游收到剥离后缀的模型 ID | `UpstreamHintRoutingTest`、CI APK |
 | 多协议 HTTP 入口 | `/chat/completions`、`/responses`、`/messages` 与对应 `/v1` 路径，以及 `/v1/responses/compact`；根路径按 3.10.0 `D/a.java` 返回 `pojia2api` 服务名和原版端点清单，错误体按 `p007h/s.j()` 固定 `proxy_error` 并保留 401/404 原文；自定义中转站模型目录解析 capabilities / supports_* / reasoning_levels，并由 `/models` 输出上下文别名、capabilities 与推理级别；策略注入按协议写入 system / instructions / system；responses/messages 的 reasoning_effort、context_window、parallel_tool_calls、top_k、thinking、metadata、tool_choice 等扩展字段按原始 JSON 类型透传；按 3.10.0 dex 补齐 messages/content/role、tools/function、tool_calls 链和扩展参数取值校验 | `GatewayTest`、`CustomRelayProviderTest`、`WireProtocolGatewayTest`、`WireProtocolAdapterTest`（7 项）、`ExtrasForwardingTest`、CI APK |
-| 设置页与关于页文案 | 按 3.10.0 dex 字符串对齐设置项，并在「配置」分组补齐「账号管理」入口（副标题「查看所有供应商已登录的账号」）、首页接入说明、免责声明、本机转发说明与作者署名语义；关于页按 dex 显示「版本 3.10.0」「作者 MT一束挽风」；接入地址随运行状态动态填入本机 URL，策略库导入帮助与「上游」页模型 ID 文案逐字补齐；配置导出完成、扫描/检测状态、任务/额度失败提示补齐原版文案 | `UiCopyContractTest`、`3.10.0-ui-audit.md`、CI APK |
+| 设置页与关于页文案 | 按 3.10.0 dex 字符串对齐设置项，并在「配置」分组补齐「账号管理」入口（副标题「查看所有供应商已登录的账号」）、首页接入说明、免责声明、本机转发说明与作者署名语义；关于页按 dex 显示「版本 3.10.0」「作者 MT一束挽风」，版本号统一取自 APK 的 `BuildConfig.VERSION_NAME`（`versionName = 3.10.0`），避免界面与安装包版本不一致；接入地址随运行状态动态填入本机 URL，策略库导入帮助与「上游」页模型 ID 文案逐字补齐；配置导出完成、扫描/检测状态、任务/额度失败提示补齐原版文案 | `UiCopyContractTest`、`3.10.0-ui-audit.md`、CI APK |
 
 ## 仍未完成或受限范围
 

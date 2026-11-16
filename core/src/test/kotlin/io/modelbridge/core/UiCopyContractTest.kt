@@ -50,12 +50,14 @@ class UiCopyContractTest {
         assertTrue(settings.contains("统计已重置"))
         assertTrue(settings.contains("已导入 "))
         assertTrue(settings.contains("\"已导入 \$imported 项\""))
-        assertTrue(settings.contains("InfoRow(\"版本\", ABOUT_VERSION)"))
+        assertTrue(settings.contains("InfoRow(\"版本\", BuildConfig.VERSION_NAME)"))
         assertTrue(settings.contains("label = \"账号管理\""))
         assertTrue(settings.contains("查看所有供应商已登录的账号"))
         assertTrue(settings.contains("onClick = onOpenAccounts"))
         assertTrue(settings.contains("InfoRow(\"作者\", ABOUT_AUTHOR"))
-        assertTrue(settings.contains("ABOUT_VERSION = \"3.10.0\""))
+        // 版本号只有一处来源：APK 的 versionName 必须是原版的 3.10.0
+        val appGradle = File(root, "app/build.gradle.kts").readText()
+        assertTrue(appGradle.contains("versionName = \"3.10.0\""))
         // 原版关于页只有「版本」「作者」，免责声明是独立分组
         assertTrue(settings.contains("GroupTitle(\"关于\")"))
         assertTrue(settings.contains("GroupTitle(\"免责声明\")"))
