@@ -140,27 +140,40 @@ abstract class OpenAiCompatibleProvider : Provider {
 
     override suspend fun listModels(context: ProviderContext): List<ModelInfo> {
         val url = joinUrl(context.baseUrl.ifBlank { defaultBaseUrl }, modelsPath)
-        // 3.10.0 自定义上游可配置多个 API Key：401/403 时依次换下一个。
-        // 逐个尝试而不是一次性全发：后者会让每个 key 都消耗一次请求。
-        var response: io.modelbridge.spi.HttpResponse? = null
-        for (credential in credentialCandidates(context)) {
-            val attempt = context.http.execute(
-                HttpRequest(
-                    method = "GET",
-                    url = url,
-                    headers = defaultHeaders() + authHeaders(credential),
-                ),
-            )
-            response = attempt
-            if (attempt.statusCode !in setOf(401, 403)) break
+        val candidates = credentialCandidates(context)
+
+        // 与 chat 用同一套换钥判断：逐个尝试，遇到不该换的错误就停。
+        // 逐个而非一次性全发，否则每个 key 都要消耗一次请求。
+        var lastResponse: io.modelbridge.spi.HttpResponse? = null
+        var lastError: Exception? = null
+
+        for ((index, credential) in candidates.withIndex()) {
+            val isLast = index == candidates.lastIndex
+            val attempt = try {
+                context.http.execute(
+                    HttpRequest(
+                        method = "GET",
+                        url = url,
+                        headers = defaultHeaders() + authHeaders(credential),
+                    ),
+                )
+            } catch (e: Exception) {
+                lastError = e
+                if (isLast) throw e
+                continue
+            }
+
+            lastResponse = attempt
+            if (!shouldRotateKey(attempt.statusCode) || isLast) break
         }
-        val finalResponse = response ?: error("没有可用的密钥")
+
+        val finalResponse = lastResponse ?: throw (lastError ?: IllegalStateException("没有可用的密钥"))
 
         if (finalResponse.statusCode !in 200..299) {
             val detail = runCatching { finalResponse.bodyBytes().decodeToString() }.getOrDefault("")
             throw ProviderException(
                 message = "$displayName 拉取模型失败（HTTP ${finalResponse.statusCode}）：${detail.take(200)}",
-                statusCode = if (finalResponse.statusCode == 401) 401 else 502,
+                statusCode = mapStatus(finalResponse.statusCode),
             )
         }
 
@@ -170,27 +183,57 @@ abstract class OpenAiCompatibleProvider : Provider {
     override suspend fun chat(context: ProviderContext, request: ChatRequest): ChatResult {
         val url = joinUrl(context.baseUrl.ifBlank { defaultBaseUrl }, chatPath)
         val body = buildRequestBody(request).toString().encodeToByteArray()
+        val candidates = credentialCandidates(context)
 
-        // 多密钥轮换：主密钥 401/403 时依次换用附加密钥。
-        // 流式与非流式走同一段逻辑——401 发生在建连阶段，此时还没开始读流。
-        var response: io.modelbridge.spi.HttpResponse? = null
-        for (credential in credentialCandidates(context)) {
-            val attempt = context.http.execute(
-                HttpRequest(
-                    method = "POST",
-                    url = url,
-                    headers = defaultHeaders() + authHeaders(credential) + mapOf(
-                        "Content-Type" to "application/json",
+        // 多密钥轮换：换钥能救的错误就换下一个，救不了的立即返回。
+        // 流式与非流式走同一段逻辑——判断发生在建连阶段，此时还没开始读流。
+        var lastResponse: io.modelbridge.spi.HttpResponse? = null
+        var lastError: Exception? = null
+
+        for ((index, credential) in candidates.withIndex()) {
+            val isLast = index == candidates.lastIndex
+            val attempt = try {
+                context.http.execute(
+                    HttpRequest(
+                        method = "POST",
+                        url = url,
+                        headers = defaultHeaders() + authHeaders(credential) + mapOf(
+                            "Content-Type" to "application/json",
+                        ),
+                        body = body,
                     ),
-                    body = body,
-                ),
-            )
-            response = attempt
-            if (attempt.statusCode !in setOf(401, 403)) break
+                )
+            } catch (e: Exception) {
+                // 网络层异常（超时、连接重置）：换钥可能换到另一条链路，值得重试
+                lastError = e
+                if (isLast) throw e
+                continue
+            }
+
+            lastResponse = attempt
+            if (!shouldRotateKey(attempt.statusCode) || isLast) break
         }
-        val finalResponse = response ?: error("没有可用的密钥")
+
+        val finalResponse = lastResponse ?: throw (lastError ?: IllegalStateException("没有可用的密钥"))
 
         return respond(finalResponse, request)
+    }
+
+    /**
+     * 这个状态码是否值得换下一个密钥重试。
+     *
+     * 换钥能改变结果的情况：
+     * - 401/403 密钥无效或无权限
+     * - 429 该密钥被限流，换一个可能还有额度
+     * - 402 该密钥余额不足
+     * - 5xx 上游故障，不同密钥可能落在不同节点
+     *
+     * 不换的情况：400/404/422 这类请求本身的问题，换钥结果一样，白白多打一次。
+     */
+    private fun shouldRotateKey(status: Int): Boolean = when (status) {
+        401, 402, 403, 429 -> true
+        in 500..599 -> true
+        else -> false
     }
 
     /** 首个密钥 + 附加密钥，用于自定义上游的多密钥轮换。 */
