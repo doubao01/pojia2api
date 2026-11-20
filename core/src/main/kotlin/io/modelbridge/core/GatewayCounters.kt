@@ -14,6 +14,13 @@ private val statsJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
  * 与访问日志分离：日志按 logLimit 裁剪后，累计请求、成功率、耗时、
  * token、缓存命中率与分上游计数仍保留，直到用户主动「重置统计」。
  * 快照可序列化到 SharedPreferences，实现跨进程重启保留。
+ *
+ * 计数口径：
+ * - [Snapshot.total] 覆盖所有请求，含未归类状态。
+ * - [Snapshot.success] 只统计 2xx。
+ * - [Snapshot.failed] 统计 4xx/5xx 与连接失败（status 0）。
+ * - 3xx 与 1xx 计入 total，但不计入 success 或 failed；
+ *   [Snapshot.successRate] 因此以「已归类请求数」为分母，避免被这类请求稀释。
  */
 class GatewayCounters {
     private val total = AtomicLong()
@@ -38,11 +45,21 @@ class GatewayCounters {
         val cachedTokens: Long = 0,
         val byUpstream: Map<String, Long> = emptyMap(),
     ) {
+        /** 已归类（成功或失败）的请求数，成功率的分母。 */
+        val classified: Long get() = success + failed
+
         val averageCostMillis: Long
             get() = if (costSamples == 0L) 0 else totalCostMillis / costSamples
-        val successRate: Double get() = if (total == 0L) 0.0 else success * 100.0 / total
+
+        /** 成功率（0–100）。没有已归类请求时返回 null，界面显示「—」而不是编造 0%。 */
+        val successRate: Double?
+            get() = if (classified == 0L) null else success * 100.0 / classified
+
+        /** 缓存命中率（0–100）。没有提示词用量时返回 null。 */
         val cacheHitRate: Double?
             get() = if (promptTokens > 0) cachedTokens * 100.0 / promptTokens else null
+
+        val hasTraffic: Boolean get() = total > 0
     }
 
     fun record(
@@ -57,6 +74,7 @@ class GatewayCounters {
         when {
             status in 200..299 -> success.incrementAndGet()
             status >= 400 || status == 0 -> failed.incrementAndGet()
+            // 1xx/3xx 计入 total，不归入成功或失败
         }
         if (costMillis > 0) {
             totalCostMillis.addAndGet(costMillis)

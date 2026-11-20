@@ -1,7 +1,9 @@
 package io.modelbridge.core
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class GatewayCountersTest {
@@ -21,7 +23,7 @@ class GatewayCountersTest {
         assertEquals(50, snapshot.completionTokens)
         assertEquals(100, snapshot.cachedTokens)
         assertEquals(50.0, snapshot.cacheHitRate!!, 0.0001)
-        assertEquals(2 * 100.0 / 3.0, snapshot.successRate, 0.0001)
+        assertEquals(2 * 100.0 / 3.0, snapshot.successRate!!, 0.0001)
     }
 
     @Test
@@ -62,5 +64,45 @@ class GatewayCountersTest {
         assertEquals(0, snapshot.cachedTokens)
         assertEquals(emptyMap<String, Long>(), snapshot.byUpstream)
         assertNull(snapshot.cacheHitRate)
+    }
+
+    @Test
+    fun `redirects count toward total but do not dilute the success rate`() {
+        val counters = GatewayCounters()
+        counters.record(200)
+        counters.record(200)
+        counters.record(302)
+
+        val snapshot = counters.snapshot()
+        assertEquals(3, snapshot.total)
+        assertEquals(2, snapshot.success)
+        assertEquals(0, snapshot.failed)
+        assertEquals(2, snapshot.classified)
+        // 分母只算已归类请求，否则 3xx 会把成功率从 100% 拉到 66.7%
+        assertEquals(100.0, snapshot.successRate!!, 0.0001)
+    }
+
+    @Test
+    fun `success rate is null before any request is classified`() {
+        val counters = GatewayCounters()
+        counters.record(302)
+
+        val snapshot = counters.snapshot()
+        assertEquals(1, snapshot.total)
+        assertEquals(0, snapshot.classified)
+        // 没有已归类请求时不编造 0%，交给界面显示「—」
+        assertNull(snapshot.successRate)
+        assertTrue(snapshot.hasTraffic)
+    }
+
+    @Test
+    fun `connection failures count as failed`() {
+        val counters = GatewayCounters()
+        counters.record(0)
+
+        val snapshot = counters.snapshot()
+        assertEquals(1, snapshot.failed)
+        assertEquals(0.0, snapshot.successRate!!, 0.0001)
+        assertFalse(GatewayCounters().snapshot().hasTraffic)
     }
 }
