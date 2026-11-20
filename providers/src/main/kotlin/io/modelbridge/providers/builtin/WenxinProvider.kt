@@ -13,7 +13,7 @@ class WenxinProvider : OpenAiCompatibleProvider() {
 
     override val id: String = "wenxin"
 
-    override val displayName: String = "文心一言"
+    override val displayName: String = "文心"
 
     override val authKind: AuthKind = AuthKind.OAuth
 

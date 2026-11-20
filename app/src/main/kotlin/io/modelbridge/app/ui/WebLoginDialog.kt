@@ -58,7 +58,7 @@ fun WebLoginDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("登录 ${provider.displayName}", fontSize = 17.sp) },
+        title = { Text(loginTitle(provider.displayName), fontSize = 17.sp) },
         text = {
             Column {
                 Text(
@@ -156,6 +156,17 @@ fun WebLoginDialog(
         },
     )
 }
+
+/**
+ * 原版登录标题的拼接规则：中文名紧接「登录」，英文名之间留一个空格。
+ * 对应 dex 中的「登录文心」「登录智谱清言」「登录当贝 AI」与「登录 DeepSeek」。
+ */
+internal fun loginTitle(displayName: String): String =
+    if (displayName.firstOrNull()?.isLetter() == true && displayName.first().code < 128) {
+        "登录 $displayName"
+    } else {
+        "登录$displayName"
+    }
 
 /** 3.10.0 dex 中为不同供应商配置的下方页面登录提示。 */
 private object WebLoginCopy {

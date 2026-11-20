@@ -141,63 +141,56 @@ abstract class OpenAiCompatibleProvider : Provider {
     override suspend fun listModels(context: ProviderContext): List<ModelInfo> {
         val url = joinUrl(context.baseUrl.ifBlank { defaultBaseUrl }, modelsPath)
         // 3.10.0 自定义上游可配置多个 API Key：401/403 时依次换下一个。
-        val responses = credentialCandidates(context).map { credential ->
-            context.http.execute(
+        // 逐个尝试而不是一次性全发：后者会让每个 key 都消耗一次请求。
+        var response: io.modelbridge.spi.HttpResponse? = null
+        for (credential in credentialCandidates(context)) {
+            val attempt = context.http.execute(
                 HttpRequest(
                     method = "GET",
                     url = url,
                     headers = defaultHeaders() + authHeaders(credential),
                 ),
-            ) to credential
+            )
+            response = attempt
+            if (attempt.statusCode !in setOf(401, 403)) break
         }
-        val (response, _) = responses.firstOrNull { it.first.statusCode !in setOf(401, 403) }
-            ?: responses.last()
+        val finalResponse = response ?: error("没有可用的密钥")
 
-        if (response.statusCode !in 200..299) {
-            val detail = runCatching { response.bodyBytes().decodeToString() }.getOrDefault("")
+        if (finalResponse.statusCode !in 200..299) {
+            val detail = runCatching { finalResponse.bodyBytes().decodeToString() }.getOrDefault("")
             throw ProviderException(
-                message = "$displayName 拉取模型失败（HTTP ${response.statusCode}）：${detail.take(200)}",
-                statusCode = if (response.statusCode == 401) 401 else 502,
+                message = "$displayName 拉取模型失败（HTTP ${finalResponse.statusCode}）：${detail.take(200)}",
+                statusCode = if (finalResponse.statusCode == 401) 401 else 502,
             )
         }
 
-        return parseModels(response.bodyBytes().decodeToString())
+        return parseModels(finalResponse.bodyBytes().decodeToString())
     }
 
     override suspend fun chat(context: ProviderContext, request: ChatRequest): ChatResult {
         val url = joinUrl(context.baseUrl.ifBlank { defaultBaseUrl }, chatPath)
         val body = buildRequestBody(request).toString().encodeToByteArray()
 
-        val response = context.http.execute(
-            HttpRequest(
-                method = "POST",
-                url = url,
-                headers = defaultHeaders() + authHeaders(context.credential) + mapOf(
-                    "Content-Type" to "application/json",
-                ),
-                body = body,
-            ),
-        )
-
-        if (response.statusCode in setOf(401, 403) && context.extraApiKeys.isNotEmpty()) {
-            for (key in context.extraApiKeys) {
-                val retry = context.http.execute(
-                    HttpRequest(
-                        method = "POST",
-                        url = url,
-                        headers = defaultHeaders() + authHeaders(Credential.ApiKey(key)) + mapOf(
-                            "Content-Type" to "application/json",
-                        ),
-                        body = body,
+        // 多密钥轮换：主密钥 401/403 时依次换用附加密钥。
+        // 流式与非流式走同一段逻辑——401 发生在建连阶段，此时还没开始读流。
+        var response: io.modelbridge.spi.HttpResponse? = null
+        for (credential in credentialCandidates(context)) {
+            val attempt = context.http.execute(
+                HttpRequest(
+                    method = "POST",
+                    url = url,
+                    headers = defaultHeaders() + authHeaders(credential) + mapOf(
+                        "Content-Type" to "application/json",
                     ),
-                )
-                if (retry.statusCode !in setOf(401, 403)) {
-                    return respond(retry, request)
-                }
-            }
+                    body = body,
+                ),
+            )
+            response = attempt
+            if (attempt.statusCode !in setOf(401, 403)) break
         }
+        val finalResponse = response ?: error("没有可用的密钥")
 
-        return respond(response, request)
+        return respond(finalResponse, request)
     }
 
     /** 首个密钥 + 附加密钥，用于自定义上游的多密钥轮换。 */

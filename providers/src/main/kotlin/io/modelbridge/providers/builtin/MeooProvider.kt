@@ -12,7 +12,7 @@ class MeooProvider : OpenAiCompatibleProvider() {
 
     override val id: String = "meoo"
 
-    override val displayName: String = "Meoo"
+    override val displayName: String = "秒悟 Meoo"
 
     override val authKind: AuthKind = AuthKind.OAuth
 

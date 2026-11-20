@@ -13,7 +13,7 @@ class ZhipuProvider : OpenAiCompatibleProvider() {
 
     override val id: String = "zhipu"
 
-    override val displayName: String = "智谱 GLM"
+    override val displayName: String = "智谱清言"
 
     override val authKind: AuthKind = AuthKind.ApiKey
 

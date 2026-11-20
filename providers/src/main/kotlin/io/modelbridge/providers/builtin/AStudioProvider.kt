@@ -12,7 +12,7 @@ class AStudioProvider : OpenAiCompatibleProvider() {
 
     override val id: String = "astudio"
 
-    override val displayName: String = "讯飞星火 AStudio"
+    override val displayName: String = "讯飞星辰"
 
     override val authKind: AuthKind = AuthKind.ApiKey
 

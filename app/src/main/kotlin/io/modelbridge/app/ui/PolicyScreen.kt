@@ -64,17 +64,6 @@ fun PolicyScreen(vms: ViewModels, onBack: () -> Unit) {
         )
         GroupTitle("策略库")
         SettingsGroup {
-            if (policies.isEmpty()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("还没有策略", fontSize = 15.sp, color = AppStyle.BodyText)
-                    Text(
-                        "复制一段策略正文后点下方「新建策略」，绑定模型 ID",
-                        fontSize = 13.sp,
-                        color = AppStyle.SubtitleText,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-            }
             policies.forEachIndexed { index, policy ->
                 if (index > 0) RowDivider()
                 Row(

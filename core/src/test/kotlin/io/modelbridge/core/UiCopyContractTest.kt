@@ -112,6 +112,22 @@ class UiCopyContractTest {
         assertTrue(webLogin.contains("在下方页面完成美团账号授权，授权后自动完成登录"))
         assertTrue(webLogin.contains("浏览器通道：页面加载中"))
         assertTrue(webLogin.contains("浏览器通道：就绪"))
+        // 原版登录标题：中文名紧接「登录」，英文名留空格
+        assertTrue(webLogin.contains("fun loginTitle("))
+        assertTrue(webLogin.contains("loginTitle(provider.displayName)"))
+        assertTrue(deviceLogin.contains("设备授权登录 · "))
+        // 供应商显示名按 dex 的登录标题还原
+        listOf(
+            "providers/src/main/kotlin/io/modelbridge/providers/builtin/WenxinProvider.kt" to "\"文心\"",
+            "providers/src/main/kotlin/io/modelbridge/providers/builtin/ZhipuProvider.kt" to "\"智谱清言\"",
+            "providers/src/main/kotlin/io/modelbridge/providers/builtin/AStudioProvider.kt" to "\"讯飞星辰\"",
+            "providers/src/main/kotlin/io/modelbridge/providers/builtin/CatpawProvider.kt" to "\"美团 CatPaw\"",
+            "providers/src/main/kotlin/io/modelbridge/providers/builtin/MeooProvider.kt" to "\"秒悟 Meoo\"",
+            "providers/src/main/kotlin/io/modelbridge/providers/workbuddy/WorkBuddyProvider.kt" to "\"WorkBuddy\"",
+        ).forEach { (path, expected) ->
+            val source = File(root, path).readText()
+            assertTrue(source.contains("displayName: String = $expected"), "$path 缺少 $expected")
+        }
         assertTrue(deviceLogin.contains("正在获取授权链接…"))
         assertTrue(viewModels.contains("在下方页面确认授权，确认后自动完成登录"))
         assertTrue(viewModels.contains("授权超时，请重新发起登录"))

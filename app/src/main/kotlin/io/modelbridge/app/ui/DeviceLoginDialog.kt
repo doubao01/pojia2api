@@ -42,7 +42,7 @@ fun DeviceLoginDialog(
             vms.cancelDeviceLogin()
             onDismiss()
         },
-        title = { Text("设备授权 · ${provider.displayName}", fontSize = 17.sp) },
+        title = { Text("设备授权登录 · ${provider.displayName}", fontSize = 17.sp) },
         text = {
             Column {
                 Text(

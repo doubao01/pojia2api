@@ -12,7 +12,7 @@ class CatpawProvider : OpenAiCompatibleProvider() {
 
     override val id: String = "catpaw"
 
-    override val displayName: String = "CatPaw 美团"
+    override val displayName: String = "美团 CatPaw"
 
     override val authKind: AuthKind = AuthKind.OAuth
 

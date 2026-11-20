@@ -55,7 +55,7 @@ class WorkBuddyProvider : Provider {
 
     override val id: String = "workbuddy"
 
-    override val displayName: String = "WorkBuddy 桌面端"
+    override val displayName: String = "WorkBuddy"
 
     override val authKind: AuthKind get() = AuthKind.OAuth
 
